@@ -1,0 +1,159 @@
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel2: #21262d;
+  --border: #30363d;
+  --text: #e6e6e6;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #e65100;
+  --purple: #a371f7;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.toolbar h1 {
+  font-size: 15px;
+  margin: 0 12px 0 0;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.toolbar select, .toolbar input, .toolbar button {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 13px;
+}
+.toolbar button { cursor: pointer; }
+.toolbar button:hover { background: #2d333b; }
+.toolbar button.primary { background: #1f6feb; border-color: #1f6feb; }
+.toolbar button.primary:hover { background: #388bfd; }
+.toolbar button.danger { border-color: #6e2a2a; color: #ff9b9b; }
+.toolbar input.desc { flex: 1; min-width: 160px; }
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.palette {
+  width: 220px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 10px;
+  overflow: auto;
+}
+.palette h3 { font-size: 12px; color: var(--muted); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: 1px; }
+.palette .group { margin-bottom: 6px; }
+.palette .kind { font-size: 12px; color: var(--accent); margin: 8px 0 4px; }
+.palette .item {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: 4px 0;
+  font-size: 12px;
+  cursor: grab;
+}
+.palette .item:hover { border-color: var(--accent); }
+.palette .hint { color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+.canvas-wrap { flex: 1; position: relative; min-width: 0; }
+.reactflow-wrap { position: absolute; inset: 0; }
+
+.inspector {
+  width: 320px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: 12px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.inspector h3 { margin: 2px 0; font-size: 13px; color: var(--green); }
+.inspector label { font-size: 11px; color: var(--muted); display: block; margin: 6px 0 2px; }
+.inspector input, .inspector select, .inspector textarea {
+  width: 100%;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 7px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.inspector .row { display: flex; gap: 6px; }
+.inspector button {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.inspector button:hover { background: #2d333b; }
+.inspector button.go { background: #1f6feb; border-color: #1f6feb; }
+.inspector pre {
+  white-space: pre-wrap;
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+}
+.trace { font-size: 11px; line-height: 1.6; }
+.trace .ev { color: var(--muted); }
+.trace .act { color: var(--orange); }
+.status-list .s { border-bottom: 1px solid var(--border); padding: 6px 0; }
+.status-list .s b { color: var(--accent); }
+.status-list .s .sum { color: var(--muted); font-size: 11px; white-space: pre-wrap; }
+
+/* react-flow 自定义节点 */
+.engine-node {
+  min-width: 150px;
+  background: var(--panel2);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.engine-node.active { border-color: var(--orange); box-shadow: 0 0 12px rgba(230,81,0,.5); }
+.engine-node .nk { color: var(--purple); font-weight: 700; font-size: 11px; }
+.engine-node .nm { font-weight: 600; margin: 2px 0; }
+.engine-node .sum { color: var(--muted); font-size: 11px; white-space: pre-wrap; max-height: 60px; overflow: hidden; }
+.engine-node .id { color: var(--muted); font-size: 10px; }

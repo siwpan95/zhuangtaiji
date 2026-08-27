@@ -1,0 +1,389 @@
+{
+  "state_machines": {
+    "SM_Init": {
+      "initial": "idle",
+      "description": "系统初始化管线",
+      "states": {
+        "idle": {
+          "content": "系统待命，等待启动指令...",
+          "on_enter": "挂载空闲监听器",
+          "on_exit": "卸载空闲监听器，准备启动",
+          "transitions": { "start": "booting" }
+        },
+        "booting": {
+          "content": "正在启动核心服务：加载配置、初始化数据库连接池...",
+          "on_enter": "分配系统资源，启动引导程序",
+          "on_exit": "引导阶段完成，释放临时资源",
+          "transitions": { "complete": "loading_modules" }
+        },
+        "loading_modules": {
+          "content": "模块加载中：认证模块 ✓ | 日志模块 ✓ | 缓存模块 加载中...",
+          "on_enter": "按依赖顺序加载业务模块",
+          "transitions": { "complete": "ready" }
+        },
+        "ready": {
+          "content": "系统就绪！所有核心服务已启动，等待业务请求...",
+          "on_enter": "注册服务发现，开启健康检查",
+          "transitions": { "complete": "finished" }
+        },
+        "finished": {
+          "content": "初始化管线全部完成，系统已可对外服务。",
+          "on_enter": "发送启动成功通知",
+          "transitions": {}
+        }
+      }
+    },
+
+    "SM_Process": {
+      "initial": "pending",
+      "description": "数据处理工作流",
+      "states": {
+        "pending": {
+          "content": "任务队列中有 5 条待处理数据...",
+          "on_enter": "扫描任务队列，计算优先级",
+          "on_exit": "锁定当前批次数据",
+          "transitions": { "start": "validating" }
+        },
+        "validating": {
+          "content": "数据校验中：格式检查 ✓ | 字段完整性 ✓ | 业务规则校验中...",
+          "on_enter": "启动数据校验管线",
+          "transitions": {
+            "validate_ok": "transforming",
+            "validate_fail": "error"
+          }
+        },
+        "transforming": {
+          "content": "数据转换：清洗脏数据 → 标准化格式 → 聚合计算...",
+          "on_enter": "启动 ETL 转换引擎",
+          "transitions": { "complete": "storing" }
+        },
+        "storing": {
+          "content": "结果持久化：写入主库 ✓ | 更新缓存 ✓ | 同步搜索引擎...",
+          "on_enter": "开启事务，批量写入",
+          "transitions": { "complete": "finished" }
+        },
+        "error": {
+          "content": "⚠ 处理异常：数据校验未通过，请检查输入数据格式。",
+          "on_enter": "记录错误日志，触发告警",
+          "transitions": { "retry": "validating" }
+        },
+        "finished": {
+          "content": "数据处理完成！5 条记录已成功入库。",
+          "on_enter": "提交事务，发送处理报告",
+          "transitions": {}
+        }
+      }
+    },
+
+    "SM_Deploy": {
+      "initial": "building",
+      "description": "持续部署流水线",
+      "states": {
+        "building": {
+          "content": "构建阶段：拉取源码 ✓ | 安装依赖... | 编译打包...",
+          "on_enter": "触发 CI 构建任务",
+          "transitions": {
+            "complete": "testing",
+            "build_fail": "rollback"
+          }
+        },
+        "testing": {
+          "content": "测试阶段：单元测试 142/142 ✓ | 集成测试运行中...",
+          "on_enter": "启动自动化测试套件",
+          "transitions": {
+            "complete": "staging",
+            "test_fail": "rollback"
+          }
+        },
+        "staging": {
+          "content": "预发布验证：部署到 Staging 环境 → 冒烟测试 → 性能压测...",
+          "on_enter": "部署到预发布环境",
+          "transitions": { "complete": "production" }
+        },
+        "production": {
+          "content": "生产部署：灰度 10% → 监控指标正常 → 全量发布...",
+          "on_enter": "执行金丝雀发布策略",
+          "transitions": { "complete": "finished" }
+        },
+        "rollback": {
+          "content": "⚠ 回滚中：停止部署 → 恢复上一版本 → 通知运维团队...",
+          "on_enter": "触发自动回滚流程",
+          "transitions": { "retry": "building" }
+        },
+        "finished": {
+          "content": "部署成功！新版本已上线，所有监控指标正常。",
+          "on_enter": "发送部署完成通知，更新 CHANGELOG",
+          "transitions": {}
+        }
+      }
+    },
+
+    "SM_Hier": {
+      "type": "hierarchical",
+      "initial": "power",
+      "description": "设备控制（层次状态机：含子状态/历史/内部转移）",
+      "states": {
+        "power": {
+          "initial": "off",
+          "history": "shallow",
+          "content": "电源总开关",
+          "on_enter": "上电自检",
+          "substates": {
+            "off": {
+              "content": "设备已关机",
+              "transitions": { "turn_on": "on" }
+            },
+            "on": {
+              "initial": "idle",
+              "content": "设备已开机",
+              "substates": {
+                "idle": {
+                  "content": "空闲待命",
+                  "transitions": { "run": "working", "fault": "error" }
+                },
+                "working": {
+                  "content": "运行中：执行任务...",
+                  "transitions": { "stop": "idle", "fault": "error" }
+                },
+                "error": {
+                  "content": "⚠ 故障态：记录日志并等待复位",
+                  "on_enter": "触发故障告警",
+                  "transitions": { "reset": "#on", "power_off": "off" }
+                }
+              },
+              "transitions": { "power_off": "off" }
+            }
+          },
+          "transitions": { "kill": "off" }
+        }
+      }
+    },
+
+    "SM_Guard": {
+      "initial": "wait",
+      "description": "带守卫(Guard)的条件转移示例",
+      "states": {
+        "wait": {
+          "content": "等待条件满足（guard: allow_go）...",
+          "transitions": { "go": { "target": "run", "guard": "allow_go" } }
+        },
+        "run": {
+          "content": "条件已满足，进入运行态。",
+          "transitions": { "stop": "wait" }
+        }
+      }
+    }
+  },
+
+  "behavior_trees": {
+    "BT_SelfHeal": {
+      "name": "故障自愈行为树",
+      "root": {
+        "type": "selector",
+        "name": "根·优先处理",
+        "children": [
+          {
+            "type": "sequence",
+            "name": "故障处理",
+            "children": [
+              { "type": "condition", "name": "检测到故障", "key": "fault", "op": "truthy" },
+              { "type": "action", "name": "隔离故障", "kind": "set", "key": "isolated", "value": true },
+              { "type": "action", "name": "尝试重启", "kind": "set", "key": "restarted", "value": true }
+            ]
+          },
+          {
+            "type": "sequence",
+            "name": "高负载处理",
+            "children": [
+              { "type": "condition", "name": "负载过高", "key": "load", "op": "gt", "value": 80 },
+              { "type": "action", "name": "横向扩容", "kind": "set", "key": "scaled", "value": true }
+            ]
+          },
+          {
+            "type": "action",
+            "name": "维持常态",
+            "kind": "set",
+            "key": "healthy", "value": true
+          }
+        ]
+      }
+    },
+
+    "BT_Combat": {
+      "name": "战斗 AI 行为树",
+      "root": {
+        "type": "selector",
+        "name": "根·行为选择",
+        "children": [
+          {
+            "type": "sequence",
+            "name": "濒死逃跑",
+            "children": [
+              {"type": "condition", "name": "血量过低", "key": "hp", "op": "lt", "value": 20},
+              {"type": "action", "name": "撤退", "kind": "set", "key": "action", "value": "flee"}
+            ]
+          },
+          {
+            "type": "sequence",
+            "name": "技能循环",
+            "children": [
+              {"type": "cooldown", "name": "大招冷却", "ticks": 3,
+               "child": {"type": "action", "name": "放大招", "kind": "set", "key": "action", "value": "ultimate"}},
+              {"type": "action", "name": "普攻", "kind": "set", "key": "action", "value": "attack"}
+            ]
+          },
+          {"type": "service", "name": "巡逻待命", "key": "enemy", "op": "truthy"}
+        ]
+      }
+    }
+  },
+
+  "decision_trees": {
+    "DT_Route": {
+      "name": "请求路由决策树",
+      "root": {
+        "type": "condition",
+        "name": "是否VIP",
+        "key": "vip",
+        "op": "truthy",
+        "true": {
+          "type": "condition",
+          "name": "VIP是否紧急",
+          "key": "urgent",
+          "op": "truthy",
+          "true":  { "type": "action", "name": "VIP加急通道", "label": "vip_urgent", "payload": {"queue": "priority"} },
+          "false": { "type": "action", "name": "VIP普通通道", "label": "vip_normal", "payload": {"queue": "vip"} }
+        },
+        "false": {
+          "type": "condition",
+          "name": "负载是否过高",
+          "key": "load",
+          "op": "gt",
+          "value": 80,
+          "true":  { "type": "action", "name": "限流排队", "label": "throttle", "payload": {"queue": "wait"} },
+          "false": { "type": "action", "name": "普通处理", "label": "normal", "payload": {"queue": "default"} }
+        }
+      }
+    }
+  },
+
+  "difference_engine": {
+    "progress_predictor": {
+      "initial_values": [0, 12, 28, 48],
+      "note": "用历史进度点差分，预测后续进度（多项式递推）"
+    }
+  },
+
+  "petri_nets": {
+    "PN_Order": {
+      "name": "订单履约 Petri 网",
+      "places": { "inventory": 2, "order": 0, "pack": 0, "ship": 1, "fail": 0 },
+      "transitions": {
+        "pick":   { "inputs": [["inventory", 1]], "outputs": [["order", 1]], "priority": 2 },
+        "pack":   { "inputs": [["order", 1]], "outputs": [["pack", 1]] },
+        "ship":   { "inputs": [["pack", 1]], "outputs": [["ship", 1], ["inventory", 1]] },
+        "reject": { "inputs": [], "outputs": [["fail", 1]], "inhibitors": [["pack", 1]] }
+      }
+    }
+  },
+
+  "markov_chains": {
+    "MC_Weather": {
+      "name": "天气演化马尔可夫链",
+      "states": ["晴", "阴", "雨"],
+      "matrix": {
+        "晴": {"晴": 0.6, "阴": 0.3, "雨": 0.1},
+        "阴": {"晴": 0.3, "阴": 0.4, "雨": 0.3},
+        "雨": {"晴": 0.2, "阴": 0.3, "雨": 0.5}
+      },
+      "initial": "晴"
+    },
+    "MC_User": {
+      "name": "用户活跃度马尔可夫链",
+      "states": ["新用户", "活跃", "沉默", "流失"],
+      "matrix": {
+        "新用户": {"新用户": 0.2, "活跃": 0.6, "沉默": 0.2, "流失": 0.0},
+        "活跃":   {"新用户": 0.0, "活跃": 0.7, "沉默": 0.25, "流失": 0.05},
+        "沉默":   {"新用户": 0.0, "活跃": 0.3, "沉默": 0.4, "流失": 0.3},
+        "流失":   {"新用户": 0.0, "活跃": 0.1, "沉默": 0.0, "流失": 0.9}
+      },
+      "initial": "新用户"
+    }
+  },
+
+  "rule_engines": {
+    "RE_Promo": {
+      "name": "电商促销规则引擎",
+      "initial_facts": [
+        {"type": "order", "user": "u1", "status": "paid", "amount": 800},
+        {"type": "user", "user": "u1", "vip": true},
+        {"type": "order", "user": "u2", "status": "paid", "amount": 1200},
+        {"type": "user", "user": "u2", "vip": false}
+      ],
+      "rules": [
+        {
+          "name": "VIP大额发券",
+          "priority": 10,
+          "when": [
+            {"type": "order", "key": "user", "constraints": {"status": "paid", "amount": {"op": "gt", "value": 500}}},
+            {"type": "user", "key": "user", "constraints": {"vip": true}}
+          ],
+          "then": [
+            {"assert": {"type": "coupon", "user": "$user", "level": "gold", "value": 100}},
+            {"log": "向 $user 发放黄金券"}
+          ]
+        },
+        {
+          "name": "普通大额发券",
+          "priority": 5,
+          "when": [
+            {"type": "order", "key": "user", "constraints": {"status": "paid", "amount": {"op": "gt", "value": 1000}}}
+          ],
+          "then": [
+            {"assert": {"type": "coupon", "user": "$user", "level": "silver", "value": 30}},
+            {"log": "向 $user 发放白银券"}
+          ]
+        }
+      ]
+    }
+  },
+
+  "decision_tables": {
+    "DT_PromoRoute": {
+      "name": "促销路由决策表",
+      "rules": [
+        {"conditions": {"vip": true, "amount": {"op": "gt", "value": 500}}, "result": "gold_coupon"},
+        {"conditions": {"amount": {"op": "gt", "value": 1000}}, "result": "silver_coupon"},
+        {"conditions": {"vip": false, "amount": {"op": "le", "value": 500}}, "result": "no_coupon"}
+      ],
+      "else": "review"
+    }
+  },
+
+  "llm_agents": {
+    "LLM_Init": {
+      "name": "初始化控制器",
+      "goal": "把系统推进到 finished",
+      "legal_events": ["start", "complete", "retry"],
+      "backend": "local"
+    }
+  },
+
+  "orchestration": {
+    "demo": {
+      "description": "状态机进入即触发行为树 tick；行为树 tick 后驱动马尔可夫链演化",
+      "engines": {
+        "sm": {"kind": "state_machine", "name": "SM_Init"},
+        "bt": {"kind": "behavior_tree", "name": "BT_SelfHeal"},
+        "mc": {"kind": "markov_chain", "name": "MC_Weather"}
+      },
+      "bindings": [
+        {"when": {"engine": "sm", "etype": "enter"}, "then": {"engine": "bt", "action": "step"}},
+        {"when": {"engine": "bt", "etype": "tick"}, "then": {"engine": "mc", "action": "step"}}
+      ],
+      "start": [
+        {"engine": "sm", "action": "step", "ctx": {"event": "start"}}
+      ]
+    }
+  }
+}

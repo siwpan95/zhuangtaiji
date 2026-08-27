@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>多范式决策引擎 · Web 节点编辑器</title>
+<style>
+  body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin:0; background:#0f1419; color:#e6e6e6; }
+  header { padding:10px 16px; background:#161b22; border-bottom:1px solid #30363d; }
+  h1 { font-size:16px; margin:0; color:#58a6ff; }
+  .bar { padding:8px 16px; background:#161b22; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  select, button, input { background:#21262d; color:#e6e6e6; border:1px solid #30363d; border-radius:6px; padding:5px 9px; font-size:13px; }
+  button { cursor:pointer; }
+  button:hover { background:#30363d; }
+  #wrap { display:flex; height:calc(100vh - 110px); }
+  #canvasBox { flex:1; position:relative; }
+  canvas { background:#0d1117; width:100%; height:100%; display:block; }
+  #side { width:340px; background:#161b22; border-left:1px solid #30363d; padding:12px; overflow:auto; }
+  pre { white-space:pre-wrap; font-size:12px; line-height:1.5; }
+  .pill { display:inline-block; background:#21262d; border:1px solid #30363d; border-radius:10px; padding:2px 8px; margin:2px; font-size:11px; }
+</style>
+</head>
+<body>
+<header><h1>多范式决策引擎 · Web 节点编辑器（react-flow 思路 · 零依赖）</h1></header>
+<div class="bar">
+  <label>范式 <select id="kind"></select></label>
+  <label>实例 <select id="name"></select></label>
+  <button id="load">加载 / 渲染</button>
+  <button id="step">▶ step</button>
+  <input id="ctx" placeholder='step 的 ctx JSON，如 {"event":"start"}' style="flex:1;min-width:220px;">
+  <a class="pill" href="/api/engines" target="_blank">API</a>
+</div>
+<div id="wrap">
+  <div id="canvasBox"><canvas id="cv"></canvas></div>
+  <div id="side">
+    <h3 style="margin:4px 0;color:#7ee787;">摘要</h3>
+    <pre id="summary"></pre>
+    <h3 style="margin:10px 0 4px;color:#7ee787;">Mermaid（可贴 Mermaid Live）</h3>
+    <pre id="mermaid" style="color:#79c0ff;"></pre>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx2d = cv.getContext('2d');
+const kindSel = document.getElementById('kind');
+const nameSel = document.getElementById('name');
+let current = null;   // {kind, name, graph}
+
+async function api(path, method='GET', body=null){
+  const r = await fetch(path, {method, headers:{'Content-Type':'application/json'},
+    body: body?JSON.stringify(body):null});
+  return await r.json();
+}
+
+async function init(){
+  const eng = await api('/api/engines');
+  const kinds = Object.keys(eng);
+  kindSel.innerHTML = kinds.map(k=>`<option value="${k}">${k}</option>`).join('');
+  kindSel.onchange = loadNames;
+  await loadNames();
+  document.getElementById('load').onclick = loadView;
+  document.getElementById('step').onclick = stepView;
+  await loadView();
+}
+
+async function loadNames(){
+  const eng = await api('/api/engines');
+  const names = eng[kindSel.value] || [];
+  nameSel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
+}
+
+async function loadView(){
+  const kind=kindSel.value, name=nameSel.value;
+  current = {kind, name};
+  const v = await api(`/api/engine/${kind}/${name}`);
+  render(v);
+}
+
+async function stepView(){
+  if(!current) return;
+  let ctx={};
+  try { ctx = JSON.parse(document.getElementById('ctx').value||'{}'); } catch(e){}
+  const v = await api(`/api/engine/${current.kind}/${current.name}/step`,
+                      'POST', {ctx});
+  render(v);
+}
+
+function render(v){
+  document.getElementById('summary').textContent = v.summary || '';
+  document.getElementById('mermaid').textContent = v.mermaid || '';
+  draw(v.graph);
+}
+
+// ---- 简易分层布局 + Canvas 渲染（react-flow 思路，纯原生） ----
+function layout(g){
+  const nodes = g.nodes, edges = g.edges;
+  const ids = nodes.map(n=>n.id);
+  const indeg = {}; ids.forEach(id=>indeg[id]=0);
+  edges.forEach(e=>{ if(indeg[e.dst]!==undefined) indeg[e.dst]++; });
+  const layer = {}; let q = ids.filter(id=>indeg[id]===0);
+  q.forEach(id=>layer[id]=0);
+  while(q.length){
+    const nx=[]; ids.forEach(()=>{});
+    for(const a of q){
+      edges.filter(e=>e.src===a).forEach(e=>{
+        if(layer[e.dst]===undefined) layer[e.dst]=layer[a]+1;
+        else layer[e.dst]=Math.max(layer[e.dst], layer[a]+1);
+        indeg[e.dst]--;
+        if(indeg[e.dst]===0) nx.push(e.dst);
+      });
+    }
+    q=nx;
+  }
+  ids.forEach(id=>{ if(layer[id]===undefined) layer[id]=0; });
+  const byLayer={};
+  nodes.forEach(n=>{ const L=layer[n.id]; (byLayer[L]=byLayer[L]||[]).push(n); });
+  const pos={};
+  let maxL=0; Object.keys(byLayer).forEach(L=>maxL=Math.max(maxL,+L));
+  const pad=50, lh=110;
+  Object.keys(byLayer).forEach(L=>{
+    const arr=byLayer[L];
+    arr.forEach((n,i)=>{ pos[n.id]={x:pad+ i*180, y:pad+ (+L)*lh}; });
+  });
+  return pos;
+}
+
+function draw(g){
+  cv.width = cv.parentElement.clientWidth;
+  cv.height = cv.parentElement.clientHeight;
+  ctx2d.clearRect(0,0,cv.width,cv.height);
+  const pos = layout(g);
+  // edges
+  g.edges.forEach(e=>{
+    const a=pos[e.src], b=pos[e.dst]; if(!a||!b) return;
+    ctx2d.strokeStyle = e.active? '#e65100' : '#39414d';
+    ctx2d.lineWidth = e.active?3:1.5;
+    ctx2d.beginPath(); ctx2d.moveTo(a.x, a.y+18); ctx2d.lineTo(b.x, b.y-18); ctx2d.stroke();
+    // arrow
+    ctx2d.fillStyle = e.active? '#e65100' : '#39414d';
+    ctx2d.beginPath();
+    ctx2d.moveTo(b.x, b.y-18); ctx2d.lineTo(b.x-5, b.y-26); ctx2d.lineTo(b.x+5, b.y-26);
+    ctx2d.closePath(); ctx2d.fill();
+    if(e.label){ ctx2d.fillStyle='#8b949e'; ctx2d.font='11px sans-serif';
+      ctx2d.fillText(e.label, (a.x+b.x)/2, (a.y+b.y)/2); }
+  });
+  // nodes
+  g.nodes.forEach(n=>{
+    const p=pos[n.id]; if(!p) return;
+    const w=120,h=36;
+    ctx2d.fillStyle = n.active? '#fff3a0' : '#21262d';
+    ctx2d.strokeStyle = n.active? '#e65100' : '#30363d';
+    ctx2d.lineWidth = n.active?3:1.5;
+    if(n.shape==='circle'){
+      ctx2d.beginPath(); ctx2d.arc(p.x, p.y, 22, 0, Math.PI*2); ctx2d.fill(); ctx2d.stroke();
+    } else if(n.shape==='diamond'){
+      ctx2d.beginPath(); ctx2d.moveTo(p.x,p.y-h/2); ctx2d.lineTo(p.x+w/2,p.y);
+      ctx2d.lineTo(p.x,p.y+h/2); ctx2d.lineTo(p.x-w/2,p.y); ctx2d.closePath();
+      ctx2d.fill(); ctx2d.stroke();
+    } else {
+      ctx2d.fillRect(p.x-w/2, p.y-h/2, w, h); ctx2d.strokeRect(p.x-w/2, p.y-h/2, w, h);
+    }
+    ctx2d.fillStyle = n.active? '#3a2d00' : '#e6e6e6';
+    ctx2d.font='11px sans-serif'; ctx2d.textAlign='center';
+    const lbl=(n.label||'').slice(0,14);
+    ctx2d.fillText(lbl, p.x, p.y+4);
+  });
+  ctx2d.textAlign='left';
+}
+
+init();
+</script>
+</body>
+</html>

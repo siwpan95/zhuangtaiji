@@ -1,0 +1,21 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ---- 用户持久化编排（自动生成，按需保留可删除此行）----
+web/orchestrations.json
+
+# ---- Node / 前端 ----
+node_modules/
+web/webui/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- 编辑/系统 ----
+.vscode/
+.idea/
+.DS_Store
+*.log
