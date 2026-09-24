@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Set
 from .engine_base import (
     BaseAdapter, EngineEvent, EngineResult, Graph, GraphEdge, GraphNode,
 )
+from .registries import engine_of, engine_sections, register_engine
 from . import (
     create_state_machine, build_behavior_tree, Blackboard,
     build_decision_tree, build_petri_net, build_markov_chain,
@@ -400,39 +401,63 @@ class DifferenceEngineAdapter(BaseAdapter):
 # ==========================================================
 # 工厂：按 config 段构造适配器
 # ==========================================================
-_ADAPTERS = {
-    "state_machine": StateMachineEngine,
-    "behavior_tree": BehaviorTreeEngine,
-    "decision_tree": DecisionTreeEngine,
-    "petri_net": PetriEngine,
-    "markov_chain": MarkovEngine,
-    "rule_engine": RuleEngineAdapter,
-    "difference_engine": DifferenceEngineAdapter,
-}
+# 过去这里是两张硬编码表（_ADAPTERS / _SECTION_OF），而同一份 kind → 段名 的
+# 映射在项目内还有 5 份副本（core/plugin.py、web/server.py ×2、ui/*_tab.py ×2）。
+# 现在统一登记到 core.registries.engines，所有消费方从注册表派生。
+#
+# 新增一个范式只需在下面这张表里加一行 —— Web 端点、UI Tab、编排层、插件
+# 注册表会自动看到它。
+_BUILTIN_ENGINE_KINDS = (
+    # (kind, 适配器类, config 段名, 展示名, 说明)
+    ("state_machine", StateMachineEngine, "state_machines",
+     "状态机 / HSM", "状态 + 事件转移；层次/历史/守卫"),
+    ("behavior_tree", BehaviorTreeEngine, "behavior_trees",
+     "行为树", "根节点驱动 · 黑板共享 · 响应式"),
+    ("decision_tree", DecisionTreeEngine, "decision_trees",
+     "决策树", "基于特征空间的一次性路由决策"),
+    ("petri_net", PetriEngine, "petri_nets",
+     "Petri 网", "库所令牌 · 变迁使能 · 抑制弧"),
+    ("markov_chain", MarkovEngine, "markov_chains",
+     "马尔可夫链", "概率状态机 · 转移矩阵 · 稳态"),
+    ("rule_engine", RuleEngineAdapter, "rule_engines",
+     "规则引擎 (RETE)", "正向推理 · α/β 匹配 · 议程"),
+    ("difference_engine", DifferenceEngineAdapter, "difference_engine",
+     "差分引擎", "有限差分递推 + 响应式差量"),
+)
 
-_SECTION_OF = {
-    "state_machine": "state_machines",
-    "behavior_tree": "behavior_trees",
-    "decision_tree": "decision_trees",
-    "petri_net": "petri_nets",
-    "markov_chain": "markov_chains",
-    "rule_engine": "rule_engines",
-    "difference_engine": "difference_engine",
-}
+for _kind, _cls, _section, _label, _desc in _BUILTIN_ENGINE_KINDS:
+    register_engine(_kind, _cls, _section, _label, _desc)
+del _kind, _cls, _section, _label, _desc
 
 
 def adapter_class(kind: str):
-    return _ADAPTERS.get(kind)
+    """按 kind 取适配器类；未注册返回 ``None``（历史 API，保持行为）。"""
+    meta = engine_of(kind)
+    return meta.adapter_cls if meta is not None else None
 
 
 def build_adapter(kind: str, name: str, full_config: Dict[str, Any],
                   on_event=None) -> BaseAdapter:
-    """按 kind + config 段构造一个适配器实例。"""
-    cls = _ADAPTERS.get(kind)
-    if cls is None:
-        raise ValueError(f"未知引擎类型: {kind}")
-    eng = cls(name=name, on_event=on_event)
-    section = _SECTION_OF[kind]
-    spec = full_config[section][name]
-    eng.load(spec)
+    """按 kind + config 段构造一个适配器实例。
+
+    :raises ValueError: kind 未注册，或 config 缺少对应段/实例
+        （错误信息列出可用 kind 与可用实例名，便于直接定位配置错误）。
+    """
+    meta = engine_of(kind)
+    if meta is None:
+        raise ValueError(
+            f"未知引擎类型: {kind}；已注册: {sorted(engine_sections())}")
+
+    section = meta.section
+    bucket = full_config.get(section)
+    if not isinstance(bucket, dict):
+        raise ValueError(
+            f'引擎 {kind!r} 需要 config 段 "{section}"，但配置中没有该段')
+    if name not in bucket:
+        raise ValueError(
+            f'引擎 {kind!r}（段 "{section}"）中不存在实例 {name!r}；'
+            f"可用: {sorted(bucket)}")
+
+    eng = meta.adapter_cls(name=name, on_event=on_event)
+    eng.load(bucket[name])
     return eng

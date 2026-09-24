@@ -11,16 +11,19 @@ from tkinter import ttk
 from datetime import datetime
 
 from core import load_config, analysis
+from core.registries import engine_of, engine_sections
 
+# 从引擎注册表派生，并**按 analysis.SUPPORTED_KINDS 的顺序**排列——保留原有的
+# 下拉框顺序（Petri 网 → 状态机 → 马尔可夫链 → 决策树），用户观感不变；
+# 同时段名与标签都来自注册表，不再有本地副本。
 _KINDS = [
-    ("petri_net", "petri_nets", "Petri 网"),
-    ("state_machine", "state_machines", "状态机/HSM"),
-    ("markov_chain", "markov_chains", "马尔可夫链"),
-    ("decision_tree", "decision_trees", "决策树"),
+    (kind, engine_of(kind).section, engine_of(kind).label)
+    for kind in analysis.SUPPORTED_KINDS
+    if engine_of(kind) is not None
 ]
 
 _KIND_MAP = {k[2]: k[0] for k in _KINDS}
-_SECTION = {k[0]: k[1] for k in _KINDS}
+_SECTION = engine_sections()
 
 
 def _log(text_widget, msg):

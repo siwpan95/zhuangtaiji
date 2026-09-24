@@ -99,6 +99,5 @@ PLUGIN = EnginePlugin(
     label="决策表 (插件示例)",
     description="条件→结论规则表，按序首条命中；证明插件扩展点",
     engine_cls=DecisionTableEngine,
-    specs_provider=lambda: __import__("core.config", fromlist=["load_config"])
-        .load_config().get("decision_tables", {}),
+    section="decision_tables",
 )

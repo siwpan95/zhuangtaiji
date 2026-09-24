@@ -47,6 +47,8 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from .registries import ACTION_REGISTRY, GUARD_REGISTRY
+
 
 class HierarchicalStateMachine:
     def __init__(self, machine_name: str, full_config: Dict[str, Any],
@@ -167,12 +169,18 @@ class HierarchicalStateMachine:
             if not isinstance(target, str):
                 continue
 
-            # guard 条件检查
+            # guard 条件检查（fail-closed：查不到即拒绝，绝不静默放行）
             if guard_name:
-                from .state_machine import GUARD_REGISTRY
                 guard_fn = GUARD_REGISTRY.get(guard_name)
-                if callable(guard_fn) and not guard_fn(context):
-                    return None, f"Guard [{guard_name}] 不满足（位于 {self.current_leaf}）"
+                where = f"位于 {self.current_leaf}"
+                if guard_fn is None:
+                    return None, (f"Guard [{guard_name}] 未注册：转移被拒绝（{where}）。"
+                                  f"请用 register_guard({guard_name!r}, fn) 注册")
+                if not callable(guard_fn):
+                    return None, (f"Guard [{guard_name}] 不是可调用对象"
+                                  f"（{where}）：转移被拒绝")
+                if not guard_fn(context):
+                    return None, f"Guard [{guard_name}] 不满足（{where}）"
 
             # 内部转移：#state（原地执行，不离开状态）
             if target.startswith("#"):
@@ -270,14 +278,16 @@ class HierarchicalStateMachine:
             description = node.get("on_enter", "")
 
         # 执行已注册动作（当描述为注册名时）
-        from .state_machine import ACTION_REGISTRY
         action_fn = ACTION_REGISTRY.get(description)
         if callable(action_fn):
             try:
                 action_fn(self._ctx or {},
                           {"state": state_id, "type": action_type, "extra": extra or {}})
-            except Exception:
-                pass
+            except Exception as exc:
+                # 过去是裸 except: pass —— 动作失败被完全吞掉，调用方毫无察觉。
+                # 现在至少给出可定位的输出，避免"注册了动作却什么都没发生"。
+                print(f"[hsm] action failed: state={state_id} type={action_type} "
+                      f"action={description!r}: {exc!r}")
 
         if callable(self.on_action):
             detail = {"description": description, "path": "/".join(path)}

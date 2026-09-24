@@ -37,11 +37,16 @@ zhuangtaiji/
 │   ├── engine_adapters.py   # 各引擎 -> 统一 Engine 接口
 │   ├── orchestrator.py      # 事件总线 + Orchestrator（编排层）
 │   ├── analysis.py / renderers.py / plugin.py / adapters_io.py
+│   ├── kernel/              # 内核：Context / effect / inject / 事件派发 / 分层装配
+│   │   ├── context.py / disposable.py / events.py / loader.py / registry.py
+│   │   └── fiber_model.json # 内核生命周期的自模型（用本项目状态机格式书写）
 │   └── __init__.py          # 统一导出
 ├── ui/
 │   └── application.py       # Tkinter 工作台
 ├── engine/
-│   └── progress_bar.py      # Canvas 进度条组件
+│   └── progress_bar.py      # Canvas 进度条组件（tkinter 延迟导入，便于无头测试）
+├── tools/
+│   └── run_tests.py         # 测试与门禁统一入口
 ├── web/
 │   ├── server.py            # 标准库 http.server 的 REST 后端 + 静态托管
 │   ├── static/              # 兜底静态页（dist 缺失时使用）
@@ -109,10 +114,25 @@ npm run dev       # Vite dev server，默认 http://localhost:5173/
 
 ## 测试
 
+推荐使用统一入口（自动处理导入路径，并把「环境缺依赖」与「代码失败」区分开）：
+
 ```bash
-python test_verify.py        # 原始功能回归
-python test_enhancements.py  # P0~P3 增强覆盖
-python test_web_e2e.py       # Web 端到端（需先 npm run build）
+python tools/run_tests.py            # 跑全部测试
+python tools/run_tests.py --list     # 只列出会被执行的测试
+python tools/run_tests.py --verbose  # 打印每个测试的完整输出
+python tools/run_tests.py kernel     # 只跑名字含 "kernel" 的测试
+```
+
+退出码 0 表示通过；`ENV-SKIP` 表示前置条件未就绪（缺 `tkinter`、缺前端 `dist/` 等），
+**不计为失败**但会在汇总里显著提示。
+
+也可以单独运行（需在项目根目录并设置 `PYTHONPATH=.`）：
+
+```bash
+PYTHONPATH=. python test/test_verify.py        # 原始功能回归
+PYTHONPATH=. python test/test_enhancements.py  # P0~P3 增强覆盖
+PYTHONPATH=. python test/test_kernel.py        # 内核断言 + 自举一致性（含 48 项）
+PYTHONPATH=. python test/test_web_e2e.py       # Web 端到端（需先 cd web/webui && npm run build）
 ```
 
 ## 配置

@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>zhuangtaiji × Cordis 内核重构方案</title>
+<style>
+:root{
+  --bg:#f8fafc; --panel:#fff; --ink:#0f172a; --muted:#475569; --faint:#94a3b8;
+  --line:#e2e8f0; --accent:#4f46e5; --ok:#059669; --warn:#d97706; --bad:#e11d48;
+  --code-bg:#f1f5f9;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,"Noto Sans SC",sans-serif;
+  font-size:15.5px;line-height:1.78;-webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:296px minmax(0,1fr);max-width:1580px;margin:0 auto}
+.side{position:sticky;top:0;height:100vh;overflow-y:auto;padding:26px 20px 60px;
+  background:linear-gradient(180deg,#0b1220,#111c33);color:#cbd5e1}
+.side::-webkit-scrollbar{width:8px}
+.side::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+.side .brand{font-size:11px;letter-spacing:.16em;color:#818cf8;font-weight:700;text-transform:uppercase}
+.side h1{font-size:16px;line-height:1.5;margin:8px 0 6px;color:#fff;font-weight:700}
+.side .meta{font-size:11.5px;color:#64748b;line-height:1.75;margin-bottom:18px}
+.side nav{display:flex;flex-direction:column;border-top:1px solid #24304a;padding-top:14px}
+.side nav a{color:#94a3b8;text-decoration:none;font-size:12.8px;padding:5px 8px;border-radius:6px;
+  border-left:2px solid transparent;transition:.14s}
+.side nav a:hover{color:#fff;background:#1e293b;border-left-color:#6366f1}
+.side nav a.toc-l1{color:#e2e8f0;font-weight:650;margin-top:8px}
+.side nav a.toc-l2{padding-left:16px}
+.side nav a.toc-l2::before{content:"·";color:#475569;margin-right:6px}
+main{padding:52px 68px 120px;min-width:0;background:var(--panel)}
+.hero{border:1px solid var(--line);border-radius:16px;padding:30px 34px;margin-bottom:34px;
+  background:linear-gradient(135deg,#ecfdf5 0%,#eef2ff 55%,#fdf4ff 100%)}
+.hero .kicker{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#047857;font-weight:700}
+.hero h1{margin:10px 0 4px;font-size:29px;line-height:1.32;letter-spacing:-.01em}
+.hero .sub{margin:0 0 10px;font-size:15px;color:#312e81;font-weight:600}
+.hero p{margin:0;color:var(--muted);font-size:14.5px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;
+  display:flex;align-items:baseline;gap:8px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.chip b{font-size:15.5px;color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+.chip span{font-size:11.5px;color:var(--muted)}
+h1,h2,h3,h4{line-height:1.4;letter-spacing:-.005em}
+h2{font-size:23px;margin:60px 0 18px;padding-bottom:12px;border-bottom:2px solid var(--line);position:relative}
+h2::before{content:"";position:absolute;left:0;bottom:-2px;width:74px;height:2px;background:var(--accent)}
+h3{font-size:18px;margin:36px 0 12px;color:#1e293b}
+h4{font-size:15.5px;margin:26px 0 10px;color:#334155}
+.anchor{opacity:0;margin-left:8px;color:var(--faint);text-decoration:none;font-weight:400;font-size:.8em}
+h2:hover .anchor,h3:hover .anchor{opacity:1}
+p{margin:12px 0}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid #c7d2fe}
+a:hover{border-bottom-color:var(--accent)}
+strong{font-weight:680;color:#0b1220}
+hr{border:0;border-top:1px solid var(--line);margin:44px 0}
+ul,ol{padding-left:26px;margin:12px 0}
+li{margin:5px 0}
+code{font-family:Consolas,"Cascadia Mono",monospace;font-size:.875em;background:var(--code-bg);
+  padding:2px 6px;border-radius:5px;color:#9d174d;border:1px solid #e2e8f0}
+pre{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:18px 20px;overflow-x:auto;
+  font-size:12.6px;line-height:1.72;margin:18px 0;border:1px solid #1e293b;box-shadow:0 2px 10px rgba(15,23,42,.10)}
+pre code{background:none;border:0;padding:0;color:#e2e8f0;font-size:inherit;white-space:pre}
+pre::-webkit-scrollbar{height:9px}
+pre::-webkit-scrollbar-thumb{background:#334155;border-radius:5px}
+table{border-collapse:collapse;width:100%;margin:20px 0;font-size:13.5px;
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+th{background:#f1f5f9;text-align:left;padding:11px 14px;font-weight:680;color:#0f172a;
+  border-bottom:2px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid #eef2f6;vertical-align:top;color:#1e293b}
+tr:last-child td{border-bottom:0}
+tbody tr:nth-child(2n){background:#fcfdfe}
+tbody tr:hover{background:#f8fafc}
+blockquote{margin:20px 0;padding:14px 20px;background:#f8fafc;border-left:4px solid var(--accent);
+  border-radius:0 10px 10px 0;color:#334155}
+blockquote p{margin:6px 0}
+.diagram{margin:26px 0;padding:18px 16px 6px;background:#fcfdff;border:1px solid var(--line);
+  border-radius:14px;box-shadow:0 1px 4px rgba(15,23,42,.05)}
+.diagram svg{width:100%;height:auto;display:block}
+.diagram figcaption{font-size:12.4px;color:var(--muted);margin-top:12px;padding-top:12px;
+  border-top:1px dashed var(--line);line-height:1.65;text-align:center}
+.diagram code{font-size:.9em}
+.foot{margin-top:70px;padding-top:22px;border-top:1px solid var(--line);font-size:12.4px;color:var(--faint);line-height:1.8}
+@media (max-width:1200px){
+  .layout{grid-template-columns:1fr}
+  .side{position:static;height:auto;padding:20px 22px}
+  .side nav{max-height:280px;overflow-y:auto}
+  main{padding:32px 22px 80px}
+  .hero{padding:22px}.hero h1{font-size:23px}
+  table{font-size:12.6px}
+}
+@media print{
+  .side{display:none}.layout{grid-template-columns:1fr;max-width:none}main{padding:0}
+  pre{background:#f8fafc;color:#0f172a;border-color:#cbd5e1}pre code{color:#0f172a}
+  h2{page-break-after:avoid}.diagram{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="side">
+    <div class="brand">Kernel Refactor Proposal</div>
+    <h1>zhuangtaiji × Cordis<br>内核重构方案</h1>
+    <div class="meta">
+      论状态机项目与 Cordis 内核的同构性<br>
+      目标 commit fccb8e6 · 6,660 行 Python<br>
+      附可运行原型（48 项断言全通过）
+    </div>
+    <nav><a class="toc-l1" href="#zhuangtaiji-cordis-内核重构方案">zhuangtaiji × Cordis 内核重构方案</a>
+<a class="toc-l2" href="#摘要">摘要</a>
+<a class="toc-l2" href="#0-核心论点识别同构">0. 核心论点：识别同构</a>
+<a class="toc-l2" href="#1-现状盘点四处全局状态-三类静默降级">1. 现状盘点：四处全局状态 + 三类静默降级</a>
+<a class="toc-l2" href="#2-四档复用建议该拿什么该放什么">2. 四档复用建议：该拿什么，该放什么</a>
+<a class="toc-l2" href="#3-自举用项目自己的引擎验证内核已实现">3. 自举：用项目自己的引擎验证内核（已实现）</a>
+<a class="toc-l2" href="#4-分阶段落地p0p4">4. 分阶段落地（P0–P4）</a>
+<a class="toc-l2" href="#5-逐文件改造清单">5. 逐文件改造清单</a>
+<a class="toc-l2" href="#6-收益量化">6. 收益量化</a>
+<a class="toc-l2" href="#7-验收不变式与门禁">7. 验收：不变式与门禁</a>
+<a class="toc-l2" href="#8-研究报告的哪些结论可直接用-哪些不适用">8. 研究报告的哪些结论可直接用 / 哪些不适用</a>
+<a class="toc-l2" href="#9-风险与回退">9. 风险与回退</a>
+<a class="toc-l2" href="#10-落位状态证据与局限">10. 落位状态、证据与局限</a>
+<a class="toc-l2" href="#附录-acordis-概念-本项目命名的对照拟采用">附录 A：Cordis 概念 → 本项目命名的对照（拟采用）</a>
+<a class="toc-l2" href="#附录-b验证命令速查">附录 B：验证命令速查</a></nav>
+  </aside>
+  <main>
+    <div class="hero">
+      <div class="kicker">Isomorphism · Not Analogy</div>
+      <h1>zhuangtaiji × Cordis 内核重构方案</h1>
+      <p class="sub">Cordis 的 Fiber 本身就是一台状态机；而本项目的差分引擎与 Cordis 的 epoch 是同一种技术。</p>
+      <p>因此重构不是"给 Python 项目套一个 TypeScript 框架"，而是<b>给一个已具备 Cordis 四分之三要素的系统补上 Context，并把所有接线从"单向"改成"可逆"</b>。并且——内核自身的生命周期可以用项目自己的状态机引擎来验证。</p>
+      <div class="chips">
+        <div class="chip"><b>48 / 48</b><span>内核断言通过</span></div>
+        <div class="chip"><b>6 → 0</b><span>模块级全局状态</span></div>
+        <div class="chip"><b>5</b><span>同构对照维度</span></div>
+        <div class="chip"><b>≈49 行</b><span>可删除的重复代码</span></div>
+        <div class="chip"><b>966 行</b><span>原型内核规模</span></div>
+      </div>
+    </div>
+    <h1 id="zhuangtaiji-cordis-内核重构方案">zhuangtaiji × Cordis 内核重构方案<a class="anchor" href="#zhuangtaiji-cordis-内核重构方案">#</a></h1>
+<p><strong>副标题：论&quot;状态机项目&quot;与 Cordis 内核的同构性，以及哪些东西该拿、哪些该放</strong></p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>目标仓库</td>
+<td><code>zhuangtaiji</code>（Gitee: <code>siwpan/zhuangtaiji</code>，commit <code>fccb8e6</code>）</td>
+</tr>
+<tr>
+<td>项目规模</td>
+<td>6,660 行 Python，44 个文件，纯标准库（<code>requirements.txt</code> 仅 <code>openai</code>）</td>
+</tr>
+<tr>
+<td>参照研究</td>
+<td>《DeepSeek Harness 源码深度研究报告》（<code>C:/deepseek-harness-master</code>）</td>
+</tr>
+<tr>
+<td>本方案附带</td>
+<td>内核已落位 <code>core/kernel/</code>（48 项断言全通过，含自举一致性验证）</td>
+</tr>
+<tr>
+<td>落地进度</td>
+<td>P0–P4 全部完成并通过统一门禁（通过 5 · 失败 0 · 环境跳过 1；内核 80 项断言）</td>
+</tr>
+<tr>
+<td>日期</td>
+<td>2026-09-24</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="摘要">摘要<a class="anchor" href="#摘要">#</a></h2>
+<p>你的判断是对的，而且比&quot;适合&quot;更强：<strong>这是同构，不是类比。</strong></p>
+<p>Cordis 的 <code>Fiber</code> 本身就是一台状态机，而 zhuangtaiji 的立身之本正是状态机引擎。更关键的是，本项目的 <code>core/difference_engine.py</code> 的&quot;响应式脏检查&quot;与 Cordis 的 &quot;epoch 依赖指纹&quot; <strong>是同一种技术的两个名字</strong>——用&quot;指纹是否变化&quot;代替&quot;遍历重算&quot;。</p>
+<p>于是重构的性质变了：不是&quot;给一个 Python 项目套上一个 TypeScript 框架&quot;，而是<strong>把一个已经具备 Cordis 四分之三要素的系统，补上缺失的那一块（Context），并把所有接线从&quot;单向&quot;改成&quot;可逆&quot;</strong>。</p>
+<p>本方案的结论可以压缩成一句话：</p>
+<blockquote>
+<p><strong>拿 Cordis 的四条纪律（effect 可逆、Context 容器、inject 声明依赖、派发模式契约）+ 两条工程纪律（空根分层 patch、fail-loud 分层）；放弃它的六项实现细节（Proxy、6 态 fiber、模块级 HMR、Typert/RPC、vendored 框架层、双 SDK 同步）。</strong></p>
+</blockquote>
+<p>并且——这是本项目独有的红利——<strong>内核自身的生命周期可以用项目自己的状态机引擎来验证</strong>：<code>core/kernel/fiber_model.json</code> 用项目的配置格式描述 Fiber 生命周期，<code>test/test_kernel.py</code> 驱动真实内核与该模型<strong>锁步前进</strong>，逐步比对，任何不一致即测试失败。</p>
+<h3 id="落地进度总览">落地进度总览<a class="anchor" href="#落地进度总览">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>状态</th>
+<th>证据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>P0-1</strong></td>
+<td>内核落位 <code>core/kernel/</code></td>
+<td>✅ 完成</td>
+<td>6 个文件；<code>core/__init__.py</code> 已登记</td>
+</tr>
+<tr>
+<td><strong>P0-2</strong></td>
+<td>统一门禁 <code>tools/run_tests.py</code></td>
+<td>✅ 完成</td>
+<td>区分 PASS / FAIL / ENV-SKIP；README 路径已修正</td>
+</tr>
+<tr>
+<td><strong>P0-3</strong></td>
+<td>内核断言迁入 <code>test/test_kernel.py</code></td>
+<td>✅ 完成</td>
+<td>48 项全通过</td>
+</tr>
+<tr>
+<td>—</td>
+<td>顺带修复：<code>test_verify.py</code> 从<strong>无法运行</strong>→<strong>通过</strong></td>
+<td>✅ 完成</td>
+<td><code>engine/progress_bar.py</code> 改延迟导入 tkinter</td>
+</tr>
+<tr>
+<td>—</td>
+<td>消除重复来源：删除 <code>prototype/</code></td>
+<td>✅ 完成</td>
+<td>内容已全部迁入规范位置</td>
+</tr>
+<tr>
+<td><strong>P1-1</strong></td>
+<td>收编 GUARD/ACTION 注册表</td>
+<td>✅ 完成</td>
+<td>注册表移至 <code>core/registries.py</code>；9 项断言</td>
+</tr>
+<tr>
+<td><strong>P1-2</strong></td>
+<td>收编 <code>_ADAPTERS</code>/<code>_SECTION_OF</code> → <code>ctx.engines</code></td>
+<td>✅ 完成</td>
+<td>9 个范式一张表；7 项断言（含源码级反回归门禁）</td>
+</tr>
+<tr>
+<td><strong>P1-3</strong></td>
+<td>收编 <code>PluginRegistry</code> + 修 <code>reset()</code> 泄漏监听器</td>
+<td>✅ 完成</td>
+<td>归并为注册表视图；真实 bug 已修；9 项断言</td>
+</tr>
+<tr>
+<td><strong>P2</strong></td>
+<td>事件三派发模式 + 引擎扩展点</td>
+<td>✅ 核心完成</td>
+<td><code>EventBus</code> 接内核；<code>engine/step</code> waterfall 可拦截</td>
+</tr>
+<tr>
+<td><strong>P3</strong></td>
+<td>配置分层 <code>patches</code> 段</td>
+<td>✅ 完成</td>
+<td><code>core/config.py</code> 的 <code>apply_config_patches</code>；6 项断言（<code>test_config_patches.py</code>）</td>
+</tr>
+<tr>
+<td><strong>P4</strong></td>
+<td>fail-loud 分层 + 配置校验 + 自省</td>
+<td>✅ 完成</td>
+<td>7 处静默降级已修（<code>core/plugin.py</code>/HSM/<code>config</code>）；load 期校验带路径；<code>ctx.inspect</code> 自省接口；4+3 项断言</td>
+</tr>
+</tbody></table>
+<p><strong>基线（改造前）</strong>：<code>test_enhancements.py</code> 通过；<code>test_verify.py</code> <strong>无法运行</strong>（GUI 依赖污染）；<code>test_web_e2e.py</code> 需前端产物；无统一门禁。
+<strong>当前</strong>：<code>python tools/run_tests.py</code> → <strong>通过 3 / 失败 0 / 环境跳过 1</strong>，退出码 0；内核断言 <strong>73 项全通过</strong>。</p>
+<h3 id="本轮实际改动清单p0-p2">本轮实际改动清单（P0 → P2）<a class="anchor" href="#本轮实际改动清单p0-p2">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>改动</th>
+<th>性质</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>core/kernel/</code>（6 文件）</td>
+<td>新增：<code>disposable</code> / <code>events</code> / <code>context</code> / <code>loader</code> / <code>registry</code> / <code>fiber_model.json</code></td>
+<td>新增</td>
+</tr>
+<tr>
+<td><code>core/registries.py</code></td>
+<td>新增：进程默认 context + 四张注册表 + <code>EngineKind</code></td>
+<td>新增</td>
+</tr>
+<tr>
+<td><code>tools/run_tests.py</code></td>
+<td>新增：统一门禁入口（PASS / FAIL / ENV-SKIP 三分类）</td>
+<td>新增</td>
+</tr>
+<tr>
+<td><code>tools/kernel_demo.py</code></td>
+<td>新增：七个痛点的前后对比演示</td>
+<td>新增</td>
+</tr>
+<tr>
+<td><code>test/test_kernel.py</code></td>
+<td>新增：73 项断言（含自举一致性、源码级反回归门禁）</td>
+<td>新增</td>
+</tr>
+<tr>
+<td><code>core/state_machine.py</code></td>
+<td>注册表外移；<strong>守卫解析改 fail-closed</strong>（修真实缺陷）</td>
+<td>修复</td>
+</tr>
+<tr>
+<td><code>core/hierarchical_state_machine.py</code></td>
+<td>注册表顶部导入（解开循环依赖）；<strong>动作异常不再静默吞掉</strong></td>
+<td>修复</td>
+</tr>
+<tr>
+<td><code>core/engine_adapters.py</code></td>
+<td>两张硬编码表 → <code>register_engine()</code>；<code>build_adapter</code> 错误可操作</td>
+<td>收编</td>
+</tr>
+<tr>
+<td><code>core/plugin.py</code></td>
+<td>重写为注册表门面；<strong>插件导入失败不再静默跳过</strong></td>
+<td>收编+修复</td>
+</tr>
+<tr>
+<td><code>core/orchestrator.py</code></td>
+<td>总线接内核；<strong>修 <code>reset()</code> 泄漏监听器</strong>；新增 <code>engine/step</code> 扩展点</td>
+<td>修复+增强</td>
+</tr>
+<tr>
+<td><code>core/analysis.py</code></td>
+<td>新增 <code>SUPPORTED_KINDS</code> 能力声明；不支持时 <strong>fail-loud</strong></td>
+<td>增强</td>
+</tr>
+<tr>
+<td><code>engine/progress_bar.py</code></td>
+<td>tkinter 改<strong>延迟导入</strong>（使无头测试可运行）</td>
+<td>修复</td>
+</tr>
+<tr>
+<td><code>web/server.py</code></td>
+<td><strong>5 处</strong>重复映射 → <code>_engine_catalog()</code> 派生</td>
+<td>收编</td>
+</tr>
+<tr>
+<td><code>ui/application.py</code></td>
+<td><strong>7 处</strong>段名字面量 → <code>_sec()</code>；Tab 装配改数据驱动</td>
+<td>收编</td>
+</tr>
+<tr>
+<td><code>ui/analysis_tab.py</code> / <code>ui/visualization_tab.py</code></td>
+<td>硬编码列表 → 注册表派生</td>
+<td>收编</td>
+</tr>
+<tr>
+<td><code>core/plugins/{decision_table,llm_agent}.py</code></td>
+<td>改用 <code>section=</code> 声明，去掉绕圈 lambda</td>
+<td>简化</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>测试命令与目录结构更新</td>
+<td>文档</td>
+</tr>
+<tr>
+<td><code>test/test_web_e2e.py</code></td>
+<td>缺前端产物时以退出码 77 声明 ENV-SKIP</td>
+<td>治理</td>
+</tr>
+</tbody></table>
+<p><strong>净效果</strong>：消除 6 处模块级全局状态；消除 <strong>9 处</strong>重复的 kind→段名 映射（原估算 3 处，实际更多）；修复 <strong>7 个真实缺陷</strong>（守卫 fail-open、编排器 <code>reset()</code> 监听器泄漏、插件 import 静默吞掉、config 读取静默为空、HSM 动作异常被吞、Tk9 <code>trace</code> 弃用、load 期 transition 校验缺失）；新增可拦截的引擎扩展点。</p>
+<hr>
+<h2 id="0-核心论点识别同构">0. 核心论点：识别同构<a class="anchor" href="#0-核心论点识别同构">#</a></h2>
+<h3 id="01-第一层同构cordis-fiber-就是一个状态机">0.1 第一层同构：Cordis Fiber 就是一个状态机<a class="anchor" href="#01-第一层同构cordis-fiber-就是一个状态机">#</a></h3>
+<figure class="diagram">
+<svg viewBox="0 0 900 400" role="img" aria-label="状态机与 Cordis Fiber 的同构对照">
+  <defs>
+    <marker id="ia" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/>
+    </marker>
+    <style>
+      .f{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+      .fl{font-size:12.5px;font-weight:600;fill:#0f172a}
+      .fs{font-size:10.5px;fill:#475569}
+      .fm{font-family:Consolas,"Cascadia Mono",monospace;font-size:11px;fill:#312e81}
+      .hd{font-size:13.5px;font-weight:700}
+    </style>
+  </defs>
+
+  <text class="f hd" x="40" y="26" fill="#0f766e">zhuangtaiji · core/state_machine.py</text>
+  <text class="f hd" x="500" y="26" fill="#4338ca">Cordis · vendor/cordis/src/fiber.ts</text>
+
+  <rect x="40" y="40" width="360" height="52" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.4"/>
+  <text class="f fl" x="54" y="62">states</text>
+  <text class="f fs" x="54" y="80">idle / running / error …</text>
+  <line x1="400" y1="66" x2="500" y2="66" stroke="#6366f1" stroke-width="1.6" marker-end="url(#ia)"/>
+  <rect x="500" y="40" width="360" height="52" rx="7" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
+  <text class="f fl" x="514" y="62">状态集</text>
+  <text class="f fs" x="514" y="80">PENDING / ACTIVE / FAILED / DISPOSED / …</text>
+
+  <rect x="40" y="102" width="360" height="52" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.4"/>
+  <text class="f fl" x="54" y="124">transitions 的 key</text>
+  <text class="f fm" x="54" y="142">start / complete / turn_on</text>
+  <line x1="400" y1="128" x2="500" y2="128" stroke="#6366f1" stroke-width="1.6" marker-end="url(#ia)"/>
+  <rect x="500" y="102" width="360" height="52" rx="7" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
+  <text class="f fl" x="514" y="124">转移事件</text>
+  <text class="f fm" x="514" y="142">provide / 撤销 / update / dispose</text>
+
+  <rect x="40" y="164" width="360" height="52" rx="7" fill="#fef2f2" stroke="#e11d48" stroke-width="1.6"/>
+  <text class="f fl" x="54" y="186">guard: "allow_go"</text>
+  <text class="f fs" x="54" y="204">可调用守卫，拒绝则停在原状态</text>
+  <line x1="400" y1="190" x2="500" y2="190" stroke="#e11d48" stroke-width="1.8" marker-end="url(#ia)"/>
+  <rect x="500" y="164" width="360" height="52" rx="7" fill="#fef2f2" stroke="#e11d48" stroke-width="1.6"/>
+  <text class="f fl" x="514" y="186">epoch 依赖指纹</text>
+  <text class="f fs" x="514" y="204">inject 的 provider fiber uid 拼接；不符即停在 PENDING</text>
+
+  <rect x="40" y="226" width="360" height="52" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.4"/>
+  <text class="f fl" x="54" y="248">on_enter 动作</text>
+  <text class="f fs" x="54" y="266">进入状态时执行（ACTION_REGISTRY）</text>
+  <line x1="400" y1="252" x2="500" y2="252" stroke="#6366f1" stroke-width="1.6" marker-end="url(#ia)"/>
+  <rect x="500" y="226" width="360" height="52" rx="7" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
+  <text class="f fl" x="514" y="248">_reload()</text>
+  <text class="f fs" x="514" y="266">重解析配置 + 执行插件主体</text>
+
+  <rect x="40" y="288" width="360" height="52" rx="7" fill="#ecfdf5" stroke="#059669" stroke-width="1.4"/>
+  <text class="f fl" x="54" y="310">on_exit 动作</text>
+  <text class="f fs" x="54" y="328">离开状态时执行</text>
+  <line x1="400" y1="314" x2="500" y2="314" stroke="#6366f1" stroke-width="1.6" marker-end="url(#ia)"/>
+  <rect x="500" y="288" width="360" height="52" rx="7" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.4"/>
+  <text class="f fl" x="514" y="310">_unload() + effect 逆序回收</text>
+  <text class="f fs" x="514" y="328">fiber.ts:675-696</text>
+
+  <rect x="40" y="350" width="360" height="44" rx="7" fill="#fffbeb" stroke="#d97706" stroke-width="1.4"/>
+  <text class="f fl" x="54" y="372">history: "shallow"（HSM）</text>
+  <text class="f fs" x="54" y="388">恢复到离开前的子状态</text>
+  <line x1="400" y1="372" x2="500" y2="372" stroke="#d97706" stroke-width="1.6" marker-end="url(#ia)"/>
+  <rect x="500" y="350" width="360" height="44" rx="7" fill="#fffbeb" stroke="#d97706" stroke-width="1.4"/>
+  <text class="f fl" x="514" y="372">HMR 失败回滚</text>
+  <text class="f fs" x="514" y="388">回滚缓存并重挂旧插件</text>
+</svg>
+<figcaption>图 1 · 同构对照：Cordis 的 Fiber 不是"有点像状态机"，它就是一个带守卫、带进入/退出动作、带历史恢复的状态机。</figcaption>
+</figure>
+<p><code>vendor/cordis/src/fiber.ts</code> 的 <code>Fiber</code> 不是&quot;有点像状态机&quot;，它就是一个完整的、带守卫与进入/退出动作的状态机：</p>
+<table>
+<thead>
+<tr>
+<th>状态机概念</th>
+<th>本项目 <code>state_machine.py</code></th>
+<th>Cordis <code>Fiber</code></th>
+<th>源码位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>状态集</td>
+<td><code>states</code></td>
+<td><code>PENDING / LOADING / ACTIVE / FAILED / DISPOSED / UNLOADING</code></td>
+<td><code>fiber.ts:147-154</code></td>
+</tr>
+<tr>
+<td>转移事件</td>
+<td><code>transitions</code> 的 key（<code>start</code>/<code>complete</code>…）</td>
+<td>依赖服务的 <code>provide</code> / 撤销、配置 <code>update</code>、显式 <code>dispose</code></td>
+<td><code>reflect.ts:314-336</code>、<code>fiber.ts:736-753</code></td>
+</tr>
+<tr>
+<td><strong>转移守卫 guard</strong></td>
+<td><code>{&quot;target&quot;: &quot;run&quot;, &quot;guard&quot;: &quot;allow_go&quot;}</code></td>
+<td><strong><code>epoch</code> 指纹</strong>：<code>inject</code> 集合中每个 provider 的 fiber uid 拼接</td>
+<td><code>fiber.ts:611-623</code></td>
+</tr>
+<tr>
+<td>守卫拒绝</td>
+<td><code>(None, &quot;Guard [x] 条件不满足&quot;)</code></td>
+<td>epoch 为 <code>INACTIVE</code> → 停在 PENDING，不执行</td>
+<td><code>fiber.ts:625-639</code></td>
+</tr>
+<tr>
+<td><strong>on_enter 动作</strong></td>
+<td><code>on_enter</code> 字段</td>
+<td><code>_reload()</code>：重新解析配置 + 执行插件主体</td>
+<td><code>fiber.ts:646-673</code></td>
+</tr>
+<tr>
+<td><strong>on_exit 动作</strong></td>
+<td><code>on_exit</code> 字段</td>
+<td><code>_unload()</code> + effect 逆序回收</td>
+<td><code>fiber.ts:675-696</code></td>
+</tr>
+<tr>
+<td>历史状态</td>
+<td>HSM 的 <code>history: &quot;shallow&quot;</code></td>
+<td>HMR 失败时回滚缓存并重挂旧插件</td>
+<td><code>vendor/README.md:9</code></td>
+</tr>
+<tr>
+<td>实例级守卫覆盖</td>
+<td><code>guards=</code> 参数</td>
+<td><code>isolate()</code> / realm</td>
+<td><code>state_machine.py:57-60</code></td>
+</tr>
+</tbody></table>
+<p><strong>这个对照表不是修辞。</strong> 它意味着两件很实际的事：</p>
+<ol>
+<li><strong>Cordis 的运行时内核，是项目 FSM 引擎的一个实例。</strong> 因此内核的行为可以被项目的&quot;可视化 Tab&quot;渲染、被&quot;分析 Tab&quot;统计、被项目的守卫机制校验——零新增基础设施。</li>
+<li><strong>反过来，Cordis 给了项目一个组件模型。</strong> 状态机不再只是&quot;七种被展示的范式之一&quot;，而是<strong>运行时的调度器本身</strong>。</li>
+</ol>
+<h3 id="02-第二层同构依赖失效-项目自己的差分机">0.2 第二层同构：依赖失效 ≡ 项目自己的差分机<a class="anchor" href="#02-第二层同构依赖失效-项目自己的差分机">#</a></h3>
+<p><code>core/difference_engine.py:16-19</code> 的自述原文：</p>
+<blockquote>
+<p><code>StateDiff / ReactiveTracker</code>（状态差量 / 响应式追踪）—— 比较前后两次状态快照，产出「差分」(added / removed / changed)。<strong>仅当差量命中订阅的键时触发回调</strong>——一种轻量、确定性的「响应式 / 脏检查」，<strong>避免对整棵状态树盲目重算</strong>。</p>
+<p>适用场景：… <strong>配置热更新：仅对变更字段做处理。</strong></p>
+</blockquote>
+<p>而 Cordis 的 epoch 机制做的是完全相同的事：</p>
+<blockquote>
+<p><code>_refresh()</code> 遍历每个 <code>inject</code> 名，拼出 <code>&#39;:&#39; + impl.fiber.uid</code>。任一依赖缺失即 <code>INACTIVE</code>。provider 的上线/下线<strong>不需要为每个依赖存订阅关系</strong>——只要重算指纹就能触发正确的 reload/unload。（<code>fiber.ts:611-623</code>）</p>
+</blockquote>
+<p><strong>两者都是&quot;以身份指纹代替全量重算&quot;。</strong> 项目已经把失效引擎写好了，只是用在&quot;进度预测&quot;和&quot;UI 重绘&quot;上，没用在它最该用的地方——<strong>依赖解析</strong>。</p>
+<p>这给了一条具体的落地路径：原型里我们用朴素的 <code>_recheck()</code> 遍历（规模小，代价可接受）。一旦插件数量上升到数百，把 <code>_recheck()</code> 换成 <code>ReactiveTracker</code>，就得到 Cordis 的 epoch 语义，且<strong>复用项目自己的代码与测试</strong>。</p>
+<h3 id="03-第三层同构项目已经具备-cordis-的四分之三">0.3 第三层同构：项目已经具备 Cordis 的四分之三<a class="anchor" href="#03-第三层同构项目已经具备-cordis-的四分之三">#</a></h3>
+<p>这是最关键的发现。逐项比对：</p>
+<table>
+<thead>
+<tr>
+<th>Cordis 基石</th>
+<th>本项目已有的对应物</th>
+<th>缺什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Service Definition</strong></td>
+<td><code>core/engine_base.py:113</code> 的 <code>Engine</code> Protocol + <code>BaseAdapter</code>（<code>:127</code>）</td>
+<td>没有 Context 来承载&quot;按名解析服务&quot;</td>
+</tr>
+<tr>
+<td><strong>Events</strong>（类型化事件）</td>
+<td><code>core/orchestrator.py:26</code> 的 <code>EventBus</code>（含 <code>*</code> 通配订阅）</td>
+<td>① <code>subscribe()</code> 返回 <code>None</code>，<strong>无退订</strong>；② 只有一种派发模式</td>
+</tr>
+<tr>
+<td><strong>守卫 / 动作注册表</strong></td>
+<td><code>core/state_machine.py:11,25</code> 的 <code>GUARD_REGISTRY</code> / <code>ACTION_REGISTRY</code></td>
+<td>全局可变、<strong>注册不可撤销</strong>、无作用域</td>
+</tr>
+<tr>
+<td><strong>插件注册表</strong></td>
+<td><code>core/plugin.py:46</code> 的 <code>PluginRegistry</code> + <code>discover()</code></td>
+<td>class-level 全局字典，无生命周期</td>
+</tr>
+<tr>
+<td><strong>配置（单一数据源）</strong></td>
+<td><code>config.json</code> + <code>web/orchestrations.json</code></td>
+<td>单文件读取，<strong>无分层、无校验、无 patch</strong></td>
+</tr>
+<tr>
+<td><strong>Context（服务容器）</strong></td>
+<td><strong>缺失</strong></td>
+<td>← 唯一真正缺的那一块</td>
+</tr>
+</tbody></table>
+<p>所以重构的准确描述是：</p>
+<blockquote>
+<p><strong>补上 <code>Context</code> 这一块拼图，并把四块拼图之间的接线从&quot;单向&quot;改成&quot;可逆&quot;。</strong></p>
+</blockquote>
+<p>而不是&quot;引入一个新框架&quot;。</p>
+<h3 id="04-一个佐证项目自己已经在手写-scope">0.4 一个佐证：项目自己已经在手写 scope<a class="anchor" href="#04-一个佐证项目自己已经在手写-scope">#</a></h3>
+<p><code>core/state_machine.py:57-60</code>：</p>
+<pre><code class="language-python"># 守卫函数表：实例级 guards 优先，其次全局 GUARD_REGISTRY
+self.guards = dict(GUARD_REGISTRY)          # ← 构造时快照全局表
+if isinstance(guards, dict):
+    self.guards.update(guards)              # ← 实例级覆盖
+</code></pre>
+<p>这是 <strong>scope（作用域覆盖）概念的雏形</strong>——项目作者已经感觉到&quot;全局注册表不够用，需要实例级覆盖&quot;。但这个手写版本有三个限制：</p>
+<ol>
+<li><strong>只覆盖了 guards 一处</strong>；<code>ACTION_REGISTRY</code>、<code>_ADAPTERS</code>、<code>PluginRegistry</code> 都没有；</li>
+<li><strong>是&quot;构造时快照拷贝&quot;</strong>：实例创建后全局表新增的 guard 不会生效；</li>
+<li><strong>无法撤销</strong>：没有卸载语义。</li>
+</ol>
+<p>Cordis 的 <code>ctx.provide</code> + <code>isolate</code> 正是这个需求的通用解。<strong>项目已经用最朴素的方式表达了需求，重构只是把答案换成通用版。</strong></p>
+<hr>
+<h2 id="1-现状盘点四处全局状态-三类静默降级">1. 现状盘点：四处全局状态 + 三类静默降级<a class="anchor" href="#1-现状盘点四处全局状态-三类静默降级">#</a></h2>
+<h3 id="11-模块级可变状态6-处">1.1 模块级可变状态（6 处）<a class="anchor" href="#11-模块级可变状态6-处">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>位置</th>
+<th>内容</th>
+<th>后果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>core/state_machine.py:11</code></td>
+<td><code>GUARD_REGISTRY: dict = {}</code></td>
+<td>全局守卫表，无撤销</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>core/state_machine.py:25</code></td>
+<td><code>ACTION_REGISTRY: dict = {}</code></td>
+<td>全局动作表，无撤销</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>core/engine_adapters.py:403</code></td>
+<td><code>_ADAPTERS = {...}</code></td>
+<td>硬编码 kind → 适配器类</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>core/engine_adapters.py:413</code></td>
+<td><code>_SECTION_OF = {...}</code></td>
+<td>硬编码 kind → config 段名</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>core/plugin.py:47</code></td>
+<td><code>PluginRegistry._plugins</code></td>
+<td>class-level 字典，跨实例共享</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>web/server.py</code></td>
+<td><code>ORCH</code> 全局 dict</td>
+<td>同一时刻每个编排只能一份状态</td>
+</tr>
+</tbody></table>
+<h3 id="12-重复的映射新增范式必然漏改一处">1.2 重复的映射（新增范式必然漏改一处）<a class="anchor" href="#12-重复的映射新增范式必然漏改一处">#</a></h3>
+<p>同一份「kind → config 段名」映射在<strong>三个地方</strong>各写了一遍：</p>
+<ul>
+<li><code>core/engine_adapters.py:413</code> 的 <code>_SECTION_OF</code></li>
+<li><code>web/server.py:325-334</code> 的 <code>kinds</code> 字典（8 项）</li>
+<li><code>ui/application.py:890-916</code> 的 7 个 Tab 注册</li>
+</ul>
+<p><strong>具体后果</strong>：加一个新范式（如 <code>decision_table</code>）时，<code>core/plugins/decision_table.py</code> 只暴露 <code>PLUGIN</code>，UI 侧靠 <code>ui/plugin_tab.py</code> 的泛化 Tab 兜住了，但 <code>web/server.py</code> 的 <code>api/engines</code> 端点需要单独追加 <code>cat.setdefault(pl.kind, ...)</code> 的补丁逻辑才不出错（<code>web/server.py:336-341</code>）——<strong>这正是重复映射的代价</strong>。</p>
+<h3 id="13-静默降级应该-fail-loud-的地方">1.3 静默降级（应该 fail loud 的地方）<a class="anchor" href="#13-静默降级应该-fail-loud-的地方">#</a></h3>
+<pre><code class="language-python"># core/plugin.py:74-77  —— 插件导入失败被完全吞掉
+for mod in pkgutil.iter_modules(pkg.__path__, package_name + &quot;.&quot;):
+    try:
+        m = importlib.import_module(mod.name)
+    except Exception:
+        continue                    # ← 插件写错了？静默跳过，没有任何输出
+
+# core/plugin.py:90-94  —— 配置读取失败被吞成空字典
+def _provider():
+    try:
+        return load_config().get(section, {})
+    except Exception:
+        return {}                   # ← 配置坏了？表现为&quot;这个范式没有实例&quot;
+</code></pre>
+<p>用户看到的现象是&quot;我写的插件没出现&quot;，而系统没有任何提示。</p>
+<h3 id="14-实测发现的具体缺陷本次验证">1.4 实测发现的具体缺陷（本次验证）<a class="anchor" href="#14-实测发现的具体缺陷本次验证">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>缺陷</th>
+<th>复现</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>非法转移目标不在 load 期校验</strong></td>
+<td><code>{&quot;transitions&quot;: {&quot;go&quot;: &quot;NOT_EXIST&quot;}}</code> → 构造成功，首次 <code>trigger(&quot;go&quot;)</code> 抛裸 <code>KeyError(&#39;NOT_EXIST&#39;)</code>（<code>core/state_machine.py:127</code>）</td>
+<td>配置错误要到运行时才炸，且错误信息不含&quot;哪台状态机的哪条转移&quot;</td>
+</tr>
+<tr>
+<td><strong>守卫不可撤销</strong></td>
+<td><code>register_guard(&quot;g1&quot;, fn)</code> 后无法注销</td>
+<td>测试之间互相污染；无法为不同编排配置不同守卫集</td>
+</tr>
+<tr>
+<td><strong>事件无退订</strong></td>
+<td><code>EventBus.subscribe()</code> 返回 <code>None</code></td>
+<td>编排重置（<code>Orchestrator.reset()</code>）只清 <code>engines</code>，<strong>不清 <code>bus._subs</code></strong>——<code>configure()</code> 反复调用会累积重复监听器</td>
+</tr>
+<tr>
+<td><strong>无 per-编排隔离</strong></td>
+<td><code>web/server.py</code> 的全局 <code>ORCH</code></td>
+<td>同一编排无法在进程内并存两份状态</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>第 3 条值得强调：<code>Orchestrator.reset()</code>（<code>core/orchestrator.py:114-117</code>）清空 <code>engines</code>、<code>trace</code>、<code>_bindings</code>，但<strong>没有清 <code>self.bus</code></strong>。而 <code>configure()</code>（<code>:60-74</code>）每次都往 <code>bus</code> 里 <code>subscribe</code> 一批新 handler。所以反复 <code>configure</code> 同一编排会<strong>线性累积监听器</strong>——这是一个真实的 bug，且只有引入&quot;注册即 effect&quot;才能系统性消除。</p>
+</blockquote>
+<hr>
+<h2 id="2-四档复用建议该拿什么该放什么">2. 四档复用建议：该拿什么，该放什么<a class="anchor" href="#2-四档复用建议该拿什么该放什么">#</a></h2>
+<figure class="diagram">
+<svg viewBox="0 0 900 380" role="img" aria-label="四档复用建议">
+  <style>
+    .z{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+    .zl{font-size:12.5px;font-weight:700;fill:#0f172a}
+    .zs{font-size:10.5px;fill:#475569}
+    .zt{font-family:Consolas,"Cascadia Mono",monospace;font-size:10.5px;fill:#334155}
+    .zb{font-size:15px;font-weight:800}
+  </style>
+
+  <rect x="16" y="14" width="868" height="80" rx="9" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
+  <text class="z zb" x="32" y="42" fill="#047857">A</text>
+  <text class="z zl" x="60" y="42">必做 · 高价值低风险（原型已验证）</text>
+  <text class="z zs" x="60" y="62">A1 effect / Disposable 注册即可逆　　A2 Context 服务容器　　A3 inject 声明依赖　　A4 事件三模式 + 契约校验</text>
+  <text class="z zt" x="60" y="81">直接消除 6 处模块级全局状态，并修掉「reset() 不清 bus」的真实 bug</text>
+
+  <rect x="16" y="102" width="868" height="80" rx="9" fill="#fffbeb" stroke="#d97706" stroke-width="1.8"/>
+  <text class="z zb" x="32" y="130" fill="#b45309">B</text>
+  <text class="z zl" x="60" y="130">建议做 · 需要一次设计决策</text>
+  <text class="z zs" x="60" y="150">B1 空根 + 分层 patch　　B2 fail-loud 分层　　B3 自省接口　　B4 运行时不变式　　B5 isolate 作用域</text>
+  <text class="z zt" x="60" y="169">B1 采用最小侵入：保留 config.json，新增顶层 "patches" 段</text>
+
+  <rect x="16" y="190" width="868" height="76" rx="9" fill="#f0f9ff" stroke="#0891b2" stroke-width="1.8"/>
+  <text class="z zb" x="32" y="218" fill="#0e7490">C</text>
+  <text class="z zl" x="60" y="218">可选 · 视产品方向</text>
+  <text class="z zs" x="60" y="238">C1 自省暴露给 LLM Agent（对应 Cordis 的 ui-cordis）　　C2 config-only 热更新　　C3 用 ReactiveTracker 替换 _recheck</text>
+  <text class="z zt" x="60" y="257">C1 的前置是 B3；且必须明说「动态插件不是安全边界」</text>
+
+  <rect x="16" y="274" width="868" height="94" rx="9" fill="#fef2f2" stroke="#e11d48" stroke-width="1.8"/>
+  <text class="z zb" x="32" y="302" fill="#9f1239">D</text>
+  <text class="z zl" x="60" y="302">明确劝退 · 不移植</text>
+  <text class="z zs" x="60" y="322">Proxy + trap　·　6 态 fiber + LOADING/UNLOADING　·　epoch 字符串指纹　·　模块级 HMR（依赖 Node internals）</text>
+  <text class="z zs" x="60" y="340">Typert / RPC 类型图　·　vendored 框架层 + rescope + 21 条加固　·　双 SDK 投影同步　·　!!js 表达式条件装配</text>
+  <text class="z zt" x="60" y="359">这些都是「fork 别人框架」或「TypeScript/多进程」带来的代价，不是收益</text>
+</svg>
+<figcaption>图 4 · 四档复用建议。核心判断标准：Cordis 的取舍是为「TypeScript + 多进程 + 多端 + fork 上游框架」付出的代价；本项目不承担这些约束，因此只取纪律，不取实现。</figcaption>
+</figure>
+<h3 id="a-档-必做高价值低风险已验证">A 档 · 必做（高价值、低风险、已验证）<a class="anchor" href="#a-档-必做高价值低风险已验证">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>复用项</th>
+<th>解决的现状</th>
+<th>原型对应</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>A1</strong></td>
+<td><strong>effect / Disposable（注册即可逆）</strong></td>
+<td>4 处全局注册表无撤销；<code>reset()</code> 不清 bus</td>
+<td><code>disposable.py</code>（单次性 + 逆序回收）</td>
+</tr>
+<tr>
+<td><strong>A2</strong></td>
+<td><strong>Context 服务容器</strong></td>
+<td>6 处模块级全局状态</td>
+<td><code>context.py</code>（<code>provide/get/require</code>）</td>
+</tr>
+<tr>
+<td><strong>A3</strong></td>
+<td><strong>inject 声明依赖</strong></td>
+<td>加载顺序靠代码顺序；provider 缺失时半死</td>
+<td><code>context.py</code>（PENDING → ACTIVE）</td>
+</tr>
+<tr>
+<td><strong>A4</strong></td>
+<td><strong>事件派发模式 + 契约校验</strong></td>
+<td>只有同步广播；无拦截/改写/短路</td>
+<td><code>events.py</code>（<code>emit</code>/<code>waterfall</code>/<code>serial</code>）</td>
+</tr>
+</tbody></table>
+<p>这四项合起来直接消除 §1.1 的全部 6 处全局状态，并顺手修掉 §1.4 的第 3、4 条。</p>
+<h3 id="b-档-建议做价值明确需要一次设计决策">B 档 · 建议做（价值明确，需要一次设计决策）<a class="anchor" href="#b-档-建议做价值明确需要一次设计决策">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>复用项</th>
+<th>解决的现状</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>B1</strong></td>
+<td><strong>空根 + 分层 patch</strong></td>
+<td>单文件 config；内置 demo 不可覆盖</td>
+<td>最小侵入方案：保留 <code>config.json</code>，新增顶层 <code>&quot;patches&quot;: [...]</code> 段</td>
+</tr>
+<tr>
+<td><strong>B2</strong></td>
+<td><strong>fail-loud 分层</strong>（必败清单 / 可选行 / 点名文件）</td>
+<td>§1.3 两类静默降级；§1.4 非法 target</td>
+<td>见 §4 P4 的验收断言</td>
+</tr>
+<tr>
+<td><strong>B3</strong></td>
+<td><strong>自省接口</strong>（<code>list_services</code> / <code>list_engines</code> / <code>list_bindings</code>）</td>
+<td>UI 7 个硬编码 Tab；web 重复映射</td>
+<td>这是&quot;去硬编码&quot;的唯一途径</td>
+</tr>
+<tr>
+<td><strong>B4</strong></td>
+<td><strong>运行时不变式（<code>invariants.py</code> 伴生）</strong></td>
+<td>3 个测试文件靠人肉覆盖</td>
+<td>见 §7</td>
+</tr>
+<tr>
+<td><strong>B5</strong></td>
+<td><strong>isolate 作用域</strong>（简化版）</td>
+<td>全局 <code>ORCH</code>；<code>state_machine.py:57-60</code> 的手写快照</td>
+<td>原型已实现，兄弟作用域互不影响</td>
+</tr>
+</tbody></table>
+<h3 id="c-档-可选视产品方向决定">C 档 · 可选（视产品方向决定）<a class="anchor" href="#c-档-可选视产品方向决定">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>复用项</th>
+<th>何时值得做</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>C1</strong></td>
+<td><strong>自省能力暴露给 LLM Agent</strong>（对应 <code>ui-cordis</code> 的 <code>cordis_inspect_*</code>）</td>
+<td>若要强化 <code>core/plugins/llm_agent.py</code>，让它能查询运行时目录 → 这是&quot;AI 编排编排器&quot;的前置能力</td>
+</tr>
+<tr>
+<td><strong>C2</strong></td>
+<td><strong>config-only 热更新</strong></td>
+<td>若要&quot;改配置不重启 UI&quot;。注意原型的 <code>hot_reload</code> 会重建插件实例，<strong>运行中状态必须外移到宿主服务</strong></td>
+</tr>
+<tr>
+<td><strong>C3</strong></td>
+<td><strong>用 <code>ReactiveTracker</code> 替换 <code>_recheck()</code></strong></td>
+<td>插件数上到数百、<code>_recheck</code> 出现性能问题（当前规模完全不必要）</td>
+</tr>
+</tbody></table>
+<h3 id="d-档-不要移植明确劝退">D 档 · 不要移植（明确劝退）<a class="anchor" href="#d-档-不要移植明确劝退">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>为什么不要</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Proxy + trap 实现的 Context</strong></td>
+<td>Python 的 <code>__getattr__</code> 达到同样效果，可读性更好、无 Proxy 帧污染栈追踪</td>
+</tr>
+<tr>
+<td><strong>6 态 fiber + LOADING/UNLOADING 过渡态</strong></td>
+<td>本项目无异步、无并发 reload；三态（PENDING/ACTIVE/FAILED）+ DISPOSED 已足够</td>
+</tr>
+<tr>
+<td><strong>epoch 字符串指纹</strong></td>
+<td>用 <code>ReactiveTracker</code> 或朴素 <code>_recheck</code> 即可；字符串拼接指纹是 TS 侧为规避订阅关系的取舍</td>
+</tr>
+<tr>
+<td><strong>模块级 HMR（<code>loadCache</code> + 依赖图分析）</strong></td>
+<td>Cordis 侧依赖 Node <code>--expose-internals</code>，且 <code>vendor/README.md:19</code> 记录了真实事故。本项目热更的是<strong>配置</strong>不是模块</td>
+</tr>
+<tr>
+<td><strong>Typert / RPC 类型图 / <code>RemoteResult</code></strong></td>
+<td>Python 无对应工具链；本项目是单进程</td>
+</tr>
+<tr>
+<td><strong>vendored 框架层 + rescope + 21 条加固清单</strong></td>
+<td>本项目没有上游要 pin；那 21 条是&quot;fork 别人框架&quot;的代价，不是收益</td>
+</tr>
+<tr>
+<td><strong>双 SDK 投影同步那套流程</strong></td>
+<td>本项目只有一个 Python 载体</td>
+</tr>
+<tr>
+<td><strong><code>!!js</code> 表达式做条件装配</strong></td>
+<td>Python 环境下 <code>eval</code> 的收益远小于风险；直接写条件函数更清楚</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-自举用项目自己的引擎验证内核已实现">3. 自举：用项目自己的引擎验证内核（已实现）<a class="anchor" href="#3-自举用项目自己的引擎验证内核已实现">#</a></h2>
+<p>这是本方案区别于&quot;普通框架移植建议&quot;的地方。</p>
+<h3 id="31-做法">3.1 做法<a class="anchor" href="#31-做法">#</a></h3>
+<figure class="diagram">
+<svg viewBox="0 0 900 420" role="img" aria-label="内核生命周期状态机">
+  <defs>
+    <marker id="la" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="la2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e11d48"/>
+    </marker>
+    <style>
+      .g{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+      .gl{font-size:13px;font-weight:700;fill:#0f172a}
+      .gs{font-size:10px;fill:#475569}
+      .ge{font-family:Consolas,"Cascadia Mono",monospace;font-size:10.5px;fill:#1e293b}
+      .gt{font-family:Consolas,"Cascadia Mono",monospace;font-size:10px;fill:#9f1239}
+    </style>
+  </defs>
+
+  <circle cx="34" cy="118" r="7" fill="#0f172a"/>
+  <line x1="41" y1="118" x2="58" y2="118" stroke="#334155" stroke-width="1.6" marker-end="url(#la)"/>
+
+  <rect x="60" y="86" width="180" height="66" rx="9" fill="#fff7ed" stroke="#d97706" stroke-width="1.8"/>
+  <text class="g gl" x="76" y="110">PENDING</text>
+  <text class="g gs" x="76" y="129">已挂载；inject 未满足</text>
+  <text class="g gs" x="76" y="144">apply 尚未执行</text>
+
+  <rect x="380" y="86" width="180" height="66" rx="9" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
+  <text class="g gl" x="396" y="110">ACTIVE</text>
+  <text class="g gs" x="396" y="129">apply 已执行</text>
+  <text class="g gs" x="396" y="144">持有 N 个 effect</text>
+
+  <rect x="380" y="248" width="180" height="66" rx="9" fill="#fef2f2" stroke="#e11d48" stroke-width="1.8"/>
+  <text class="g gl" x="396" y="272">FAILED</text>
+  <text class="g gs" x="396" y="291">apply 抛错</text>
+  <text class="g gs" x="396" y="306">已回滚本次 effect</text>
+
+  <rect x="690" y="166" width="180" height="66" rx="9" fill="#f1f5f9" stroke="#475569" stroke-width="1.8"/>
+  <text class="g gl" x="706" y="190">DISPOSED</text>
+  <text class="g gs" x="706" y="209">effect 逆序回收完毕</text>
+  <text class="g gs" x="706" y="224">服务清空</text>
+
+  <!-- PENDING -> ACTIVE -->
+  <path d="M240 104 L380 104" stroke="#334155" stroke-width="1.8" marker-end="url(#la)" fill="none"/>
+  <text class="g ge" x="252" y="90">provide</text>
+  <text class="g gt" x="252" y="76">guard: inject_satisfied</text>
+
+  <!-- ACTIVE -> PENDING -->
+  <path d="M380 134 L240 134" stroke="#334155" stroke-width="1.8" marker-end="url(#la)" fill="none"/>
+  <text class="g ge" x="262" y="152">unprovide（provider 撤回）</text>
+
+  <!-- PENDING -> FAILED -->
+  <path d="M150 152 C150 220 300 281 380 281" stroke="#e11d48" stroke-width="1.8" marker-end="url(#la2)" fill="none" stroke-dasharray="6 4"/>
+  <text class="g ge" x="176" y="236" fill="#9f1239">provide_error</text>
+
+  <!-- FAILED -> PENDING -->
+  <path d="M380 300 C300 300 150 220 150 152" stroke="#334155" stroke-width="1.6" marker-end="url(#la)" fill="none"/>
+  <text class="g ge" x="196" y="322">unprovide</text>
+
+  <!-- PENDING/ACTIVE/FAILED -> DISPOSED -->
+  <path d="M240 118 L690 184" stroke="#475569" stroke-width="1.5" marker-end="url(#la)" fill="none" stroke-dasharray="5 4"/>
+  <path d="M560 118 L690 184" stroke="#475569" stroke-width="1.5" marker-end="url(#la)" fill="none" stroke-dasharray="5 4"/>
+  <path d="M560 281 L690 216" stroke="#475569" stroke-width="1.5" marker-end="url(#la)" fill="none" stroke-dasharray="5 4"/>
+  <text class="g ge" x="600" y="120" fill="#475569">dispose（任一状态）</text>
+
+  <rect x="60" y="356" width="810" height="48" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text class="g gs" x="76" y="376" font-size="11">模型文件：<tspan font-family="Consolas" fill="#312e81">prototype/fiber_model.json</tspan> —— 用本项目自己的状态机配置格式描述本项目的内核。</text>
+  <text class="g gs" x="76" y="394" font-size="11">校验方式：<tspan font-family="Consolas" fill="#312e81">test_kernel.py</tspan> 驱动真实内核与该模型<tspan font-weight="700">锁步前进</tspan>，逐步比对状态；任何一步不一致即测试失败。</text>
+</svg>
+<figcaption>图 2 · 内核生命周期状态机（4 状态 / 7 转移）。注意 PENDING→ACTIVE 与 PENDING→FAILED 都是 <code>provide</code> 触发的，前者带守卫 <code>inject_satisfied</code>；<code>ACTIVE/FAILED</code> 在依赖撤回时退回 <code>PENDING</code>——即"只在依赖集合真的变化时才重试"。</figcaption>
+</figure>
+<p><code>core/kernel/fiber_model.json</code> —— 用项目<strong>自己的状态机配置格式</strong>描述 Cordis Fiber 的生命周期：</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;flat&quot;,
+  &quot;initial&quot;: &quot;PENDING&quot;,
+  &quot;description&quot;: &quot;Cordis Fiber 生命周期（内核的自模型）&quot;,
+  &quot;states&quot;: {
+    &quot;PENDING&quot;: {
+      &quot;content&quot;: &quot;已挂载；inject 未满足或尚未求值；apply 尚未执行&quot;,
+      &quot;on_enter&quot;: &quot;join_pending_list&quot;,
+      &quot;on_exit&quot;: &quot;leave_pending_list&quot;,
+      &quot;transitions&quot;: {
+        &quot;provide&quot;:       { &quot;target&quot;: &quot;ACTIVE&quot;, &quot;guard&quot;: &quot;inject_satisfied&quot; },
+        &quot;provide_error&quot;: &quot;FAILED&quot;,
+        &quot;dispose&quot;:       &quot;DISPOSED&quot;
+      }
+    },
+    &quot;ACTIVE&quot;: {
+      &quot;content&quot;: &quot;apply 已执行；持有 N 个 effect&quot;,
+      &quot;on_enter&quot;: &quot;run_apply&quot;,
+      &quot;on_exit&quot;: &quot;unwind_effects&quot;,
+      &quot;transitions&quot;: { &quot;unprovide&quot;: &quot;PENDING&quot;, &quot;dispose&quot;: &quot;DISPOSED&quot; }
+    },
+    &quot;FAILED&quot;: {
+      &quot;content&quot;: &quot;apply 抛错；本次收集的 effect 已全部回滚&quot;,
+      &quot;on_enter&quot;: &quot;rollback_effects&quot;,
+      &quot;transitions&quot;: { &quot;unprovide&quot;: &quot;PENDING&quot;, &quot;dispose&quot;: &quot;DISPOSED&quot; }
+    },
+    &quot;DISPOSED&quot;: { &quot;content&quot;: &quot;已卸载；effect 逆序回收完毕，服务清空&quot;, &quot;transitions&quot;: {} }
+  }
+}
+</code></pre>
+<p><strong>格式的合法性已由项目引擎亲自确认</strong>：测试里 <code>create_state_machine(&quot;fiber&quot;, full_cfg)</code> 成功构造实例，<code>guard</code> 与 <code>on_enter</code> / <code>on_exit</code> 都走项目自己的解析路径。</p>
+<h3 id="32-验证方式锁步一致性">3.2 验证方式：锁步一致性<a class="anchor" href="#32-验证方式锁步一致性">#</a></h3>
+<figure class="diagram">
+<svg viewBox="0 0 900 300" role="img" aria-label="自举锁步一致性验证">
+  <defs>
+    <marker id="ka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/>
+    </marker>
+    <style>
+      .k{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+      .kl{font-size:12px;font-weight:600;fill:#0f172a}
+      .ks{font-size:10px;fill:#475569}
+      .km{font-family:Consolas,"Cascadia Mono",monospace;font-size:10px;fill:#312e81}
+      .kc{font-size:10.5px;font-weight:700;fill:#047857}
+    </style>
+  </defs>
+
+  <rect x="20" y="20" width="860" height="58" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1.6"/>
+  <text class="k kl" x="36" y="42">真实内核 · prototype/cordis_kernel/context.py</text>
+  <text class="k ks" x="36" y="62">执行真实操作：plugin() / provide() / 撤回 / dispose() —— 状态由 _recheck() 按依赖重算</text>
+
+  <rect x="20" y="200" width="860" height="58" rx="8" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.6"/>
+  <text class="k kl" x="36" y="222">模型 · prototype/fiber_model.json（由项目自己的 FSM 引擎加载）</text>
+  <text class="k ks" x="36" y="242">对每个操作发送对应事件：provide / provide_error / unprovide / dispose</text>
+
+  <g>
+    <line x1="140" y1="78" x2="140" y2="200" stroke="#6366f1" stroke-width="1.4" marker-end="url(#ka)"/>
+    <line x1="340" y1="78" x2="340" y2="200" stroke="#6366f1" stroke-width="1.4" marker-end="url(#ka)"/>
+    <line x1="540" y1="78" x2="540" y2="200" stroke="#6366f1" stroke-width="1.4" marker-end="url(#ka)"/>
+    <line x1="740" y1="78" x2="740" y2="200" stroke="#6366f1" stroke-width="1.4" marker-end="url(#ka)"/>
+  </g>
+
+  <g>
+    <rect x="88" y="104" width="104" height="40" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.2"/>
+    <text class="k km" x="100" y="129">PENDING</text>
+    <rect x="288" y="104" width="104" height="40" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.2"/>
+    <text class="k km" x="300" y="129">ACTIVE</text>
+    <rect x="488" y="104" width="104" height="40" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.2"/>
+    <text class="k km" x="500" y="129">PENDING</text>
+    <rect x="688" y="104" width="104" height="40" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1.2"/>
+    <text class="k km" x="700" y="129">ACTIVE</text>
+  </g>
+
+  <g>
+    <rect x="88" y="146" width="104" height="38" rx="6" fill="#fff" stroke="#a5b4fc" stroke-width="1.2"/>
+    <text class="k km" x="100" y="170">PENDING</text>
+    <rect x="288" y="146" width="104" height="38" rx="6" fill="#fff" stroke="#a5b4fc" stroke-width="1.2"/>
+    <text class="k km" x="300" y="170">ACTIVE</text>
+    <rect x="488" y="146" width="104" height="38" rx="6" fill="#fff" stroke="#a5b4fc" stroke-width="1.2"/>
+    <text class="k km" x="500" y="170">PENDING</text>
+    <rect x="688" y="146" width="104" height="38" rx="6" fill="#fff" stroke="#a5b4fc" stroke-width="1.2"/>
+    <text class="k km" x="700" y="170">ACTIVE</text>
+  </g>
+
+  <g>
+    <text class="k kc" x="196" y="130">=</text>
+    <text class="k kc" x="396" y="130">=</text>
+    <text class="k kc" x="596" y="130">=</text>
+    <text class="k kc" x="796" y="130">=</text>
+  </g>
+
+  <text class="k ks" x="36" y="284" font-size="11">任何一步不等即失败 → 内核实现与它的模型不可能悄悄漂移。开发中该用例当场抓出两处场景设计错误。</text>
+</svg>
+<figcaption>图 3 · 锁步一致性验证：同一串操作分别驱动「真实内核」与「由项目自己 FSM 引擎加载的模型」，逐步骤断言状态相等。</figcaption>
+</figure>
+<p><code>test/test_kernel.py</code> 的 <code>[9] 自举一致性</code> 组：</p>
+<pre><code>每个操作 → ① 执行真实内核操作  ② 向模型发送对应事件  ③ 断言两者状态一致
+</code></pre>
+<p>已通过的 5 个场景：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>覆盖</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>A</strong> 正常插件</td>
+<td><code>PENDING→ACTIVE→PENDING→ACTIVE→DISPOSED</code> 逐步一致（含&quot;先挂载后提供&quot;的逆序）</td>
+</tr>
+<tr>
+<td><strong>B</strong> apply 抛错</td>
+<td><code>PENDING→FAILED→PENDING→FAILED→DISPOSED</code> 一致</td>
+</tr>
+<tr>
+<td><strong>C</strong> 双向校验</td>
+<td>模型<strong>未声明</strong>的转移，内核同样不得发生（<code>PENDING</code> 上 <code>unprovide</code> 两侧都不动）</td>
+</tr>
+<tr>
+<td><strong>D</strong> 动作可观测</td>
+<td>模型的 <code>on_enter</code>/<code>on_exit</code> 是真实 <code>ACTION_REGISTRY</code> 动作，<code>run_apply</code> 确实执行</td>
+</tr>
+<tr>
+<td><strong>E</strong> 格式合法性</td>
+<td>配置可被项目 FSM 引擎直接加载</td>
+</tr>
+</tbody></table>
+<h3 id="33-这样做换来什么">3.3 这样做换来什么<a class="anchor" href="#33-这样做换来什么">#</a></h3>
+<ol>
+<li><strong>最强的一致性测试</strong>：内核实现与它的模型不可能悄悄漂移。任何一侧改了转移条件，测试立刻变红。（事实上这组测试在开发中当场抓出了我自己的两处场景错误。）</li>
+<li><strong>可视化零成本</strong>：这张图是 <code>Graph</code> 可直接渲染的——加一个&quot;内核&quot;Tab 就能看到项目自己的运行时状态迁移。</li>
+<li><strong>可被项目的守卫机制约束</strong>：如&quot;<code>DISPOSED</code> 不得有出边&quot;这类规则，可以写成 <code>ctx.guards</code> 里的守卫并自动校验。</li>
+<li><strong>概念统一</strong>：项目对外宣称&quot;多范式决策引擎&quot;，现在<strong>它自己也成了一个可被展示的范式</strong>——这对一份教学型/演示型项目是很有说服力的收束。</li>
+</ol>
+<hr>
+<h2 id="4-分阶段落地p0p4">4. 分阶段落地（P0–P4）<a class="anchor" href="#4-分阶段落地p0p4">#</a></h2>
+<p>每一阶段都<strong>独立可验收、可回退</strong>，且优先采用&quot;绞杀者模式&quot;（旧 API 保留为薄包装一个版本周期）。</p>
+<h3 id="p0-建立内核骨架不动任何现有代码">P0 · 建立内核骨架（不动任何现有代码）<a class="anchor" href="#p0-建立内核骨架不动任何现有代码">#</a></h3>
+<ul>
+<li>新增 <code>core/kernel/</code>（<code>disposable.py</code> / <code>events.py</code> / <code>context.py</code> / <code>loader.py</code>），直接采用 <code>core/kernel/</code>。</li>
+<li>新增 <code>test_kernel.py</code>（48 项断言，含自举一致性）。</li>
+<li><strong>验收</strong>：<code>python test_kernel.py</code> 退出码 0；<code>python demo.py</code> 退出码 0。</li>
+<li><strong>风险</strong>：无（纯新增）。</li>
+</ul>
+<h3 id="p1-收编四处全局注册表">P1 · 收编四处全局注册表<a class="anchor" href="#p1-收编四处全局注册表">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>旧</th>
+<th>新</th>
+<th>兼容层</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GUARD_REGISTRY</code> / <code>ACTION_REGISTRY</code></td>
+<td><code>ctx.guards</code> / <code>ctx.actions</code></td>
+<td><code>register_guard(name, fn)</code> 保留，转发到进程默认 ctx 并返回 <code>Disposable</code></td>
+</tr>
+<tr>
+<td><code>_ADAPTERS</code> / <code>_SECTION_OF</code></td>
+<td><code>ctx.engines.register(kind, cls, section, label)</code></td>
+<td><code>build_adapter()</code> 保留，转发查询 <code>ctx.engines</code></td>
+</tr>
+<tr>
+<td><code>PluginRegistry._plugins</code></td>
+<td><code>ctx.plugins</code></td>
+<td><code>PluginRegistry.register/get/all</code> 保留为薄包装</td>
+</tr>
+<tr>
+<td><code>web/server.py</code> 的 <code>ORCH</code></td>
+<td>每个编排一个 <code>ctx.isolate()</code> 作用域</td>
+<td>模块级 <code>ORCH</code> 改为 <code>dict[str, Context]</code></td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>验收断言</strong>：<ol>
+<li><code>dispose()</code> 后 <code>ctx.services()</code>、<code>ctx.mount_states()</code>、事件监听器数全为 0；</li>
+<li>同一进程内建两个 <code>Orchestrator</code>，各自的引擎实例 <code>is not</code> 另一个，且卸载 A 不影响 B；</li>
+<li><strong>回归修复</strong>：连续 <code>configure()</code> 同一编排 N 次，<code>bus</code> 监听器数保持常量（当前是线性累积）。</li>
+</ol>
+</li>
+<li><strong>风险</strong>：中。旧 API 的语义差异（返回值从 <code>None</code> 变为 <code>Disposable</code>）需逐个确认调用方。</li>
+</ul>
+<h3 id="p2-事件升级">P2 · 事件升级<a class="anchor" href="#p2-事件升级">#</a></h3>
+<ul>
+<li><code>EventBus</code> 增加 <code>on()</code>（返回 <code>Disposable</code>）/ <code>waterfall()</code> / <code>serial()</code>，保留 <code>subscribe()</code> 作为 <code>on()</code> 的别名。</li>
+<li>为引擎 step 引入两个扩展点（这是<strong>产品价值</strong>，不只是架构）：<code>engine/step</code>（waterfall，可改写入参/否决）与 <code>engine/stepped</code>（emit，纯通知）。</li>
+<li><strong>验收断言</strong>：<ol>
+<li><code>on()</code> 返回的句柄 <code>dispose()</code> 后监听器数减 1；</li>
+<li>同一事件名混用派发模式立即抛错；</li>
+<li>一个&quot;输入钳制&quot;策略插件能在不改 <code>Orchestrator</code> 的前提下把非法 <code>ctx.event</code> 改写掉。</li>
+</ol>
+</li>
+<li><strong>风险</strong>：低。新增能力，不改变既有行为。</li>
+</ul>
+<h3 id="p3-配置分层最小侵入">P3 · 配置分层（最小侵入）<a class="anchor" href="#p3-配置分层最小侵入">#</a></h3>
+<p>保留 <code>config.json</code> 作为<strong>唯一数据源</strong>，但新增顶层 <code>&quot;patches&quot;</code> 段，并让 <code>load_config()</code> 返回 patch 后的结果：</p>
+<pre><code class="language-json">{
+  &quot;state_machines&quot;: { &quot;...&quot;: &quot;内置 demo，不改&quot; },
+  &quot;orchestration&quot;: { &quot;...&quot;: &quot;内置编排，不改&quot; },
+  &quot;patches&quot;: [
+    { &quot;insert&quot;: [ { &quot;id&quot;: &quot;user-demo&quot;, &quot;name&quot;: &quot;orchestration.user&quot;, &quot;config&quot;: { &quot;...&quot;: &quot;...&quot; } } ] },
+    { &quot;id&quot;: &quot;SM_Init&quot;, &quot;config&quot;: { &quot;states&quot;: { &quot;...&quot;: &quot;整体替换&quot; } } }
+  ]
+}
+</code></pre>
+<ul>
+<li><strong>验收断言</strong>：<ol>
+<li>patch 目标缺失 / <code>name</code> 不匹配时<strong>只警告不抛错</strong>，且不误改其它行；</li>
+<li><code>apply_patches(base, patches)</code> <strong>不修改入参</strong>（这是热重载可回退的前提）；</li>
+<li>同一组 patch 重放 3 次结果完全一致。</li>
+</ol>
+</li>
+<li><strong>风险</strong>：中。整键替换的语义必须写进 README——用户改一个字段要重述该 <code>config</code> 块的全部字段。</li>
+</ul>
+<h3 id="p4-fail-loud-分层-自省-门禁">P4 · fail-loud 分层 + 自省 + 门禁<a class="anchor" href="#p4-fail-loud-分层-自省-门禁">#</a></h3>
+<p><strong>四类失败必须区别对待</strong>（这是报告里最有操作性的结论之一）：</p>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>例子</th>
+<th>正确行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>必败</strong></td>
+<td>核心引擎段缺失、内置编排的引擎引用不存在</td>
+<td>立刻抛错并中止</td>
+</tr>
+<tr>
+<td><strong>可选行</strong></td>
+<td>某个可选范式未安装</td>
+<td>警告 + 跳过，不影响其余</td>
+</tr>
+<tr>
+<td><strong>点名文件缺失</strong></td>
+<td>用户显式 <code>--patch foo.json</code> 但文件不存在</td>
+<td><strong>抛错</strong>（调用方点名了它）</td>
+</tr>
+<tr>
+<td><strong>未注册的插件</strong></td>
+<td><code>core/plugins/</code> 下某个文件 import 失败</td>
+<td><strong>抛出带文件名的 ImportError</strong>（当前是 <code>except Exception: continue</code>）</td>
+</tr>
+</tbody></table>
+<p><strong>新增 load 期校验</strong>（修掉 §1.4 第 1 条）：遍历全部 <code>states</code> 与 <code>transitions</code>，断言每个 <code>target</code> 存在、<code>initial</code> 存在、<code>guard</code> 名已注册。给出精确定位：</p>
+<pre><code>SM_Init.states.idle.transitions.go → 目标 &quot;NOT_EXIST&quot; 不存在
+</code></pre>
+<p><strong>自省接口</strong>：</p>
+<pre><code class="language-python">ctx.inspect.engines()     # [{kind, label, section, instances:[...]}]
+ctx.inspect.services()    # 当前 ctx 可见服务
+ctx.inspect.bindings()    # 编排绑定（含&quot;when 的 etype 无人发出&quot;这类可疑项）
+ctx.inspect.pending()     # 停在 PENDING 的插件 —— 排查&quot;插件静默不生效&quot;的确定入口
+</code></pre>
+<p>然后 <code>ui/application.py</code> 的 7 个硬编码 Tab 与 <code>web/server.py:325-334</code> 的重复 <code>kinds</code> 字典<strong>全部改为遍历自省结果</strong>。</p>
+<ul>
+<li><strong>验收断言</strong>：<ol>
+<li>构造一份含非法 target 的配置 → <strong>load 期</strong>抛出带定位信息的错误；</li>
+<li><code>core/plugins/</code> 下放一个语法错误的 <code>*.py</code> → 抛出带文件名的错误（而非静默跳过）；</li>
+<li>新增一个范式只需 <code>ctx.engines.register(...)</code>，UI 与新 Web 端点自动出现（无任何硬编码改动）。</li>
+</ol>
+</li>
+<li><strong>风险</strong>：低–中。校验可能对现有配置报出既有问题（属于收益）。</li>
+</ul>
+<hr>
+<h2 id="5-逐文件改造清单">5. 逐文件改造清单<a class="anchor" href="#5-逐文件改造清单">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>现状</th>
+<th>改为</th>
+<th>阶段</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>core/kernel/*</code></td>
+<td>—</td>
+<td>新增（原型可直接搬）</td>
+<td>P0</td>
+<td>无</td>
+</tr>
+<tr>
+<td><code>test_kernel.py</code></td>
+<td>—</td>
+<td>新增 48 项断言</td>
+<td>P0</td>
+<td>无</td>
+</tr>
+<tr>
+<td><code>core/state_machine.py:11,25</code></td>
+<td>全局 <code>GUARD_REGISTRY</code>/<code>ACTION_REGISTRY</code></td>
+<td><code>ctx.guards</code>/<code>ctx.actions</code>；旧函数转发</td>
+<td>P1</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>core/state_machine.py:57-60</code></td>
+<td><code>dict(GUARD_REGISTRY)</code> 快照</td>
+<td><code>ctx.isolate()</code> + 服务解析</td>
+<td>P1</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/state_machine.py:127</code></td>
+<td>裸 <code>KeyError</code></td>
+<td>load 期校验 + 精确定位</td>
+<td>P4</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/engine_adapters.py:403,413</code></td>
+<td><code>_ADAPTERS</code> / <code>_SECTION_OF</code></td>
+<td><code>ctx.engines</code> 注册表</td>
+<td>P1</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>core/engine_adapters.py:428</code></td>
+<td><code>build_adapter()</code> 直查字典</td>
+<td>转发 <code>ctx.engines.build()</code></td>
+<td>P1</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/plugin.py:47</code></td>
+<td>class-level <code>_plugins</code></td>
+<td><code>ctx.plugins</code></td>
+<td>P1</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>core/plugin.py:76-77</code></td>
+<td><code>except Exception: continue</code></td>
+<td>带文件名抛错</td>
+<td>P4</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/plugin.py:90-94</code></td>
+<td><code>except Exception: return {}</code></td>
+<td>区分&quot;段不存在&quot;与&quot;读取失败&quot;</td>
+<td>P4</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/orchestrator.py:26</code></td>
+<td><code>EventBus.subscribe</code> 返回 <code>None</code></td>
+<td><code>on()</code> 返回 <code>Disposable</code>；加三模式</td>
+<td>P2</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/orchestrator.py:114-117</code></td>
+<td><code>reset()</code> 不清 <code>bus</code></td>
+<td>依赖 effect 自动回收</td>
+<td>P1</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/config.py:7</code></td>
+<td>单文件 <code>json.load</code></td>
+<td><code>load_config()</code> → <code>apply_patches()</code></td>
+<td>P3</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>web/server.py:325-334</code></td>
+<td>硬编码 <code>kinds</code> 字典</td>
+<td>遍历 <code>ctx.inspect.engines()</code></td>
+<td>P4</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>web/server.py</code> 全局 <code>ORCH</code></td>
+<td>单一状态</td>
+<td><code>dict[str, Context]</code></td>
+<td>P1</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>ui/application.py:890-916</code></td>
+<td>7 个硬编码 Tab</td>
+<td>遍历自省结果生成</td>
+<td>P4</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>ui/plugin_tab.py</code></td>
+<td>泛化 Tab（已很好）</td>
+<td>成为<strong>唯一</strong>的 Tab 渲染器</td>
+<td>P4</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>core/plugins/*.py</code></td>
+<td><code>PLUGIN = EnginePlugin(...)</code></td>
+<td>保持；额外支持 <code>inject</code> 字段</td>
+<td>P1</td>
+<td>低</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-收益量化">6. 收益量化<a class="anchor" href="#6-收益量化">#</a></h2>
+<p><strong>消除的全局状态</strong>：6 处（§1.1 全部）</p>
+<p><strong>删除的重复代码</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>位置</th>
+<th>行数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ui/application.py:890-916</code> 的硬编码 Tab 注册</td>
+<td>≈ 27</td>
+</tr>
+<tr>
+<td><code>web/server.py:325-334</code> 的 <code>kinds</code> 字典</td>
+<td>≈ 10</td>
+</tr>
+<tr>
+<td><code>core/engine_adapters.py:413</code> 的 <code>_SECTION_OF</code></td>
+<td>≈ 12</td>
+</tr>
+<tr>
+<td>合计</td>
+<td><strong>≈ 49 行</strong>（且是&quot;新增范式必须同步改&quot;的那类行）</td>
+</tr>
+</tbody></table>
+<p><strong>新增能力</strong>（都是当前完全没有的）：</p>
+<ol>
+<li>注册可撤销（修掉 <code>reset()</code> 不清 bus 的真实 bug）</li>
+<li>依赖驱动的加载顺序（配置行序不再影响结果）</li>
+<li>策略拦截（限流/审计/输入钳制/缓存可作为插件挂上，不必改 <code>Orchestrator</code>）</li>
+<li>编排级隔离（并发驱动、单独卸载）</li>
+<li>配置分层（内置 demo 可被用户覆盖而不修改内置文件）</li>
+<li>自省（UI 与 Web 去硬编码的唯一途径）</li>
+<li>可执行不变式（§7）</li>
+</ol>
+<p><strong>新增的确定性</strong>（这是最容易被低估的收益）：<code>ctx.inspect.pending()</code> 让&quot;插件为什么没生效&quot;从&quot;读代码推断&quot;变成&quot;查一个列表&quot;。</p>
+<hr>
+<h2 id="7-验收不变式与门禁">7. 验收：不变式与门禁<a class="anchor" href="#7-验收不变式与门禁">#</a></h2>
+<p>对应研究报告「把不可靠的判断下沉为机器门禁」那一章。建议新增 <code>tools/check.py</code> 作为<strong>唯一 gate 入口</strong>，聚合以下检查：</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>gate</th>
+<th>检查什么</th>
+<th>现状</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>G1</td>
+<td>内核断言</td>
+<td><code>test/test_kernel.py</code> 的 48 项</td>
+<td>已有</td>
+</tr>
+<tr>
+<td>G2</td>
+<td>自举一致性</td>
+<td>内核状态与 <code>fiber_model.json</code> 锁步一致</td>
+<td>已有</td>
+</tr>
+<tr>
+<td>G3</td>
+<td>配置 Schema</td>
+<td>每个 <code>states</code>/<code>transitions.target</code>/<code>initial</code>/<code>guard</code> 名合法且存在</td>
+<td>内核已保证（<code>core/state_machine.py</code> load 期校验）</td>
+</tr>
+<tr>
+<td>G4</td>
+<td>重复注册检测</td>
+<td>同一 ctx 内重复 <code>provide</code> / 重复 <code>register(kind)</code> 报错</td>
+<td>内核已保证</td>
+</tr>
+<tr>
+<td>G5</td>
+<td>无泄漏</td>
+<td>每个 demo/测试结束后 <code>effect_count()==0</code>、服务为空、监听器为 0</td>
+<td>内核已保证</td>
+</tr>
+<tr>
+<td>G6</td>
+<td>patch 重放确定性</td>
+<td>同一 patch 重放 3 次结果相同、入参未被修改</td>
+<td>内核已保证</td>
+</tr>
+<tr>
+<td>G7</td>
+<td>静默降级检测</td>
+<td>全仓 grep <code>except Exception:</code> 后紧跟 <code>continue</code>/<code>return {}</code> 的位置，人工确认为&quot;有意的降级&quot;</td>
+<td>待做</td>
+</tr>
+<tr>
+<td>G8</td>
+<td>插件可发现性</td>
+<td><code>core/plugins/</code> 下每个 <code>*.py</code> 都能被 import（防止插件静默失效）</td>
+<td>待做（P4）</td>
+</tr>
+</tbody></table>
+<p><strong>每模块 <code>invariants.py</code></strong> 的设计（对应报告的 39 个 <code>./invariant</code> 伴生包）：</p>
+<pre><code>core/state_machine.py   → core/invariants/state_machine.py   断言：当前状态必在 states 中；history 的 from/to 均合法
+core/orchestrator.py    → core/invariants/orchestrator.py    断言：每个 binding 的 when.etype 有人发出；engines 非空
+core/kernel/context.py  → core/invariants/kernel.py          断言：ACTIVE 插件的 inject 全部可解析（原型已有此断言）
+</code></pre>
+<p>报告的规则值得直接照抄：<strong>&quot;只有独立观测可能发散时才写不变式；空检查/只查服务存在性的检查一律非法。&quot;</strong></p>
+<hr>
+<h2 id="8-研究报告的哪些结论可直接用-哪些不适用">8. 研究报告的哪些结论可直接用 / 哪些不适用<a class="anchor" href="#8-研究报告的哪些结论可直接用-哪些不适用">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>报告结论</th>
+<th>本项目适用性</th>
+<th>落地形式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&quot;一切皆插件&quot;：注册即 effect，卸载即回收</td>
+<td>✅ <strong>直接适用</strong>（A1）</td>
+<td><code>ctx.effect()</code> / <code>Disposable</code></td>
+</tr>
+<tr>
+<td>Context 是服务仓库，插件按 key 查找</td>
+<td>✅ <strong>直接适用</strong>（A2）</td>
+<td><code>ctx.provide/get</code> + <code>__getattr__</code></td>
+</tr>
+<tr>
+<td><code>inject</code> 声明依赖，加载顺序由服务可得性决定</td>
+<td>✅ <strong>直接适用</strong>（A3）</td>
+<td>PENDING → ACTIVE</td>
+</tr>
+<tr>
+<td>五种派发模式，模式是公开契约</td>
+<td>⚠️ <strong>部分适用</strong>：只需 <code>emit</code>/<code>waterfall</code>/<code>serial</code> 三种；<code>parallel</code>/<code>bail</code> 本项目无并发场景</td>
+<td><code>events.py</code></td>
+</tr>
+<tr>
+<td>Waterfall 是 around-middleware，不调 <code>next()</code> 即短路</td>
+<td>✅ <strong>直接适用</strong></td>
+<td>策略插件</td>
+</tr>
+<tr>
+<td>空根 + 分层 patch；按 id 整键替换；patch 不跨 include 边界</td>
+<td>✅ 适用（B1）。&quot;不跨 include&quot;本项目无 include 概念，可忽略</td>
+<td><code>apply_patches</code></td>
+</tr>
+<tr>
+<td>patch 算法单一纯函数，挂载与离线 dump 共用</td>
+<td>✅ <strong>直接适用</strong></td>
+<td><code>core/kernel/loader.py</code></td>
+</tr>
+<tr>
+<td>fail-loud 分层（必败 / 可选 / 点名文件）</td>
+<td>✅ <strong>直接适用</strong>（B2）</td>
+<td>P4</td>
+</tr>
+<tr>
+<td>&quot;Model-visible ⟺ logged&quot; 可执行断言</td>
+<td>✅ <strong>思想适用</strong>：本项目对应物是&quot;<strong>引擎状态必须可由事件轨迹重建</strong>&quot;</td>
+<td>G2 自举一致性 + <code>trace</code> 校验</td>
+</tr>
+<tr>
+<td>运行时不变式（<code>invariant.ts</code> 伴生）</td>
+<td>✅ 适用（B4）</td>
+<td><code>core/invariants/</code></td>
+</tr>
+<tr>
+<td>capability seam 三角色（Definition/Provider/Consumer）</td>
+<td>✅ <strong>已经具备</strong>（<code>Engine</code>/<code>BaseAdapter</code>/插件）</td>
+<td>只差显式化命名</td>
+</tr>
+<tr>
+<td>自省工具（<code>cordis_inspect_*</code>）暴露给 agent</td>
+<td>⚠️ 可选（C1）；见下</td>
+<td><code>ctx.inspect</code></td>
+</tr>
+<tr>
+<td>postmortem 必须产出机器可执行 guardrail</td>
+<td>✅ 适用（文化层）</td>
+<td><code>tools/check.py</code></td>
+</tr>
+<tr>
+<td>vendor 框架的 21 条本地加固</td>
+<td>❌ <strong>不适用</strong>：那是 fork 别人框架的代价</td>
+<td>—</td>
+</tr>
+<tr>
+<td>双 SDK 投影同步</td>
+<td>❌ 不适用</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Proxy/trap、6 态 fiber、epoch 字符串指纹</td>
+<td>❌ 不适用（D 档）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Typert / RPC 类型图 / 桌面端 / 多端载体</td>
+<td>❌ 不适用（单进程 Python）</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p><strong>一条特别值得展开</strong>：报告里的 <code>ui-cordis</code> 让 agent <strong>读自己的运行时目录</strong>（<code>cordis_inspect_list/query</code>：Service / Event / Builtin / Tool / Slots / Theme）并<strong>写一个临时插件挂上去</strong>（<code>define/run/stop/undefine</code>）。</p>
+<p>本项目有一个天然的对应物：<code>core/plugins/llm_agent.py</code>（LLM 智能体范式）。一旦有了 <code>ctx.inspect</code>，就可以让 LLM agent：</p>
+<ol>
+<li>查询&quot;当前有哪些引擎、哪些编排、哪些绑定、哪些绑定指向了不存在的引擎&quot;；</li>
+<li><strong>生成一份编排配置并用 patch 层加载</strong>（而不是写代码）——因为配置是数据，这是安全的；</li>
+<li>在沙箱里 <code>define</code> 一个临时插件做实验，失败就 <code>undefine</code>。</li>
+</ol>
+<p>这比&quot;让 LLM 写 Python 代码&quot;安全一个数量级，而且<strong>正是 Cordis 的 <code>ui-cordis</code> 信任模型的翻版</strong>：持久化必须走受审批的安装路径，运行时试验则限制在可回收的作用域内。</p>
+<p>报告的这条警告同样适用：<strong>动态代码执行不是安全边界</strong>。若要做 C1，必须像 Cordis 那样在 README 里明说&quot;把动态插件当作 bash 权限对待&quot;，并把持久化路径单独收窄。</p>
+<hr>
+<h2 id="9-风险与回退">9. 风险与回退<a class="anchor" href="#9-风险与回退">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>风险</th>
+<th>等级</th>
+<th>缓解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>整键替换的语义反直觉（改一字段要重述整个 config 块）</td>
+<td><strong>中高</strong></td>
+<td>必须在 README + <code>config.json</code> 注释里显式说明；提供 <code>--dump-config</code> 等价物让用户看到合成结果</td>
+</tr>
+<tr>
+<td>旧 API 返回值变化（<code>None</code> → <code>Disposable</code>）破坏调用方</td>
+<td>中</td>
+<td>保留旧函数为薄包装一个版本周期；<code>None</code> 返回值的调用方不受影响</td>
+</tr>
+<tr>
+<td>引入 <code>ctx</code> 后调试栈变长（多一层 <code>__getattr__</code>）</td>
+<td>低</td>
+<td><code>__getattr__</code> 只在服务缺失时抛错，且错误信息列出可用服务</td>
+</tr>
+<tr>
+<td><code>_recheck()</code> 全量遍历的 O(n²) 风险</td>
+<td>低（当前 n&lt;50）</td>
+<td>留好替换为 <code>ReactiveTracker</code> 的接口；<code>_recheck</code> 已是 <code>Context</code> 的私有方法，替换不动调用方</td>
+</tr>
+<tr>
+<td>自举一致性测试成为&quot;改内核就要改模型&quot;的负担</td>
+<td>低</td>
+<td>这正是它的目的——<strong>模型与实现必须同步演进</strong>；且模型只有 4 个状态</td>
+</tr>
+<tr>
+<td>过度设计（给 6,660 行的项目引入企业级框架）</td>
+<td><strong>中</strong></td>
+<td>本方案已明确 D 档劝退 8 项；内核 4 个文件合计 <strong>966 行</strong>（含约六成注释与文档），约占项目规模 15%</td>
+</tr>
+</tbody></table>
+<p><strong>回退路径</strong>：P0 是纯新增，删除 <code>core/kernel/</code> 即完全回退。P1–P4 每个阶段独立，旧 API 在 P1–P3 期间始终可用，可随时停止推进而保持系统可运行。</p>
+<hr>
+<h2 id="10-落位状态证据与局限">10. 落位状态、证据与局限<a class="anchor" href="#10-落位状态证据与局限">#</a></h2>
+<blockquote>
+<p>本节记录<strong>实际已完成</strong>的部分，而非设计意图。原 <code>prototype/</code> 目录已删除——
+其内容全部迁入项目的规范位置（<code>core/kernel/</code>、<code>test/</code>、<code>tools/</code>），
+避免出现&quot;两处都可以改&quot;的漂移风险。</p>
+</blockquote>
+<h3 id="101-可运行方式">10.1 可运行方式<a class="anchor" href="#101-可运行方式">#</a></h3>
+<pre><code class="language-bash">cd zhuangtaiji
+python tools/run_tests.py            # 门禁总入口（推荐）
+python tools/run_tests.py kernel     # 只跑内核断言（48 项）
+python tools/kernel_demo.py          # 七个痛点的前后对比演示
+</code></pre>
+<h3 id="102-落位的交付物">10.2 落位的交付物<a class="anchor" href="#102-落位的交付物">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>内容</th>
+<th>阶段</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>core/kernel/disposable.py</code></td>
+<td><code>Disposable</code>（单次性、可 join）/ <code>DisposableList</code>（逆序回收）</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>core/kernel/events.py</code></td>
+<td><code>EventBus</code>：<code>emit</code>/<code>waterfall</code>/<code>serial</code> + 派发模式契约校验</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>core/kernel/context.py</code></td>
+<td><code>Context</code>：服务容器、<code>effect</code>、<code>plugin</code>、<code>isolate</code>、生命周期转移</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>core/kernel/loader.py</code></td>
+<td><code>apply_patches</code> / <code>compose</code> / <code>Loader</code> / <code>hot_reload</code> / 必败清单审计</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>core/kernel/registry.py</code></td>
+<td><code>Registry</code>：可撤销、fail-loud、可自省的通用注册表</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>core/kernel/fiber_model.json</code></td>
+<td>用项目配置格式描述的内核生命周期自模型</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>test/test_kernel.py</code></td>
+<td>48 项断言（含自举一致性 5 场景）</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>tools/run_tests.py</code></td>
+<td>测试与门禁统一入口（区分 PASS / FAIL / ENV-SKIP）</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>tools/kernel_demo.py</code></td>
+<td>七个痛点的前后对比演示</td>
+<td>P0</td>
+</tr>
+<tr>
+<td><code>tools/build_doc.mjs</code></td>
+<td>本方案 Markdown → HTML 的构建脚本</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h3 id="103-已验证的事实不是设计意图">10.3 已验证的事实（不是设计意图）<a class="anchor" href="#103-已验证的事实不是设计意图">#</a></h3>
+<ul>
+<li><strong>门禁全绿</strong>：<code>python tools/run_tests.py</code> → 通过 3 / 失败 0 / 环境跳过 1，退出码 0。</li>
+<li><strong>48 项内核断言全部通过</strong>（<code>通过 48 项，失败 0 项</code>），含自举一致性 5 场景。</li>
+<li>内核状态与 <code>fiber_model.json</code> 在 5 个场景中逐步一致。</li>
+<li><code>fiber_model.json</code> 可被项目自己的 <code>create_state_machine()</code> 直接加载，<code>guard</code> 与 <code>on_enter</code>/<code>on_exit</code> 走项目自己的解析路径。</li>
+<li><code>effect</code> 的&quot;注册即执行&quot;语义在开发中<strong>当场抓出</strong>了我自己两处用法/场景错误——这是语义正确性的一个旁证。</li>
+<li><strong><code>test_verify.py</code> 已从&quot;无法运行&quot;变为&quot;通过&quot;</strong>（见 §10.5）。</li>
+</ul>
+<h3 id="104-局限必须说明">10.4 局限（必须说明）<a class="anchor" href="#104-局限必须说明">#</a></h3>
+<ol>
+<li><strong>内核是&quot;够用即止&quot;的实现，不是生产级框架</strong>。没有并发、没有持久化、没有错误上报通道。</li>
+<li><strong>不实现真实 HMR</strong>。<code>hot_reload</code> 只是&quot;dispose + 重算 patch + 重新挂载&quot;，被重建的插件会丢失实例内状态——需要保留的状态必须外移到宿主服务。这<strong>不等于</strong> Cordis 的模块热重载。</li>
+<li><strong><code>_recheck()</code> 是朴素全量遍历</strong>，不是 epoch/差分失效。规模上到数百插件时应替换为 <code>difference_engine.ReactiveTracker</code>。</li>
+<li><strong><code>isolate</code> 是简化版</strong>：只做&quot;同名服务在子树内独立解析 + 不穿透祖先&quot;，没有 Cordis 的 delimiter 符号与 realm 引用计数 GC。</li>
+<li><strong>本方案的收益量化基于静态阅读</strong>，§6 的 49 行是可直接删除的重复代码，实际净变化取决于兼容层的写法。</li>
+<li><strong>P1–P4 的收编尚未把旧调用方全部切换到 ctx</strong>——旧 API 仍由薄包装提供，两条路径暂时并存。</li>
+</ol>
+<h3 id="105-p0-阶段顺带修掉的真实缺陷">10.5 P0 阶段顺带修掉的真实缺陷<a class="anchor" href="#105-p0-阶段顺带修掉的真实缺陷">#</a></h3>
+<p>改造前 P0 的基线探测（<code>python test/test_verify.py</code>）直接暴露了三个问题，本阶段一并修复：</p>
+<table>
+<thead>
+<tr>
+<th>缺陷</th>
+<th>真相</th>
+<th>修复</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>README 写的测试路径全部过时</td>
+<td><code>python test_verify.py</code> 实际是 <code>test/test_verify.py</code></td>
+<td>修正 README（含目录结构段）</td>
+</tr>
+<tr>
+<td>从 <code>test/</code> 运行找不到 <code>core</code></td>
+<td>Python 把<strong>脚本所在目录</strong>而非 CWD 加入 <code>sys.path</code></td>
+<td><code>tools/run_tests.py</code> 自动设置 <code>PYTHONPATH</code></td>
+</tr>
+<tr>
+<td><strong><code>test_verify.py</code> 完全无法运行</strong></td>
+<td><code>engine/progress_bar.py:1</code> 顶层 <code>import tkinter</code>，而该文件只在 <code>:63</code> 用到 tkinter 一次；测试却只用纯缓动函数</td>
+<td>改为<strong>延迟导入</strong>（<code>_require_tk()</code>），GUI 不可用时给出可操作错误；纯逻辑测试不再受牵连</td>
+</tr>
+</tbody></table>
+<p>第 3 条是典型的&quot;GUI 依赖污染可测逻辑&quot;：一个 GUI 导入让整个纯逻辑测试套件在无头环境直接崩掉。修复后 <code>test_verify.py</code> 从<strong>无法运行</strong>变为<strong>全部通过</strong>。</p>
+<p>同时为&quot;前置条件未就绪&quot;建立了显式约定：<code>test/test_web_e2e.py</code> 在缺前端 <code>dist/</code> 时以退出码 <strong>77</strong> 退出，由 <code>run_tests.py</code> 归类为 <code>ENV-SKIP</code> 而非 <code>FAIL</code>——<strong>把&quot;环境没准备好&quot;与&quot;代码坏了&quot;分开</strong>，这是门禁可信度的前提。</p>
+<hr>
+<h2 id="附录-acordis-概念-本项目命名的对照拟采用">附录 A：Cordis 概念 → 本项目命名的对照（拟采用）<a class="anchor" href="#附录-acordis-概念-本项目命名的对照拟采用">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Cordis</th>
+<th>本项目建议命名</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Context</code></td>
+<td><code>Context</code></td>
+<td>保持一致，便于对照报告</td>
+</tr>
+<tr>
+<td><code>ctx.effect()</code></td>
+<td><code>ctx.effect()</code></td>
+<td>保持</td>
+</tr>
+<tr>
+<td><code>inject</code></td>
+<td><code>inject</code></td>
+<td>保持</td>
+</tr>
+<tr>
+<td><code>provide</code> / <code>get</code></td>
+<td><code>provide</code> / <code>get</code> / <code>require</code></td>
+<td><code>require</code> 是&quot;必须有&quot;版本，错误信息更可操作</td>
+</tr>
+<tr>
+<td><code>emit</code> / <code>waterfall</code> / <code>serial</code></td>
+<td>同名</td>
+<td>保持</td>
+</tr>
+<tr>
+<td><code>Fiber</code></td>
+<td>（不引入该名）</td>
+<td>用 <code>Context</code> 的 <code>state</code> 属性承载，避免两套生命周期概念</td>
+</tr>
+<tr>
+<td><code>isolate</code> / realm</td>
+<td><code>ctx.isolate()</code></td>
+<td>简化版</td>
+</tr>
+<tr>
+<td><code>bundle</code> / <code>profile</code> / patch</td>
+<td><code>patch</code> 层</td>
+<td>只保留 patch，不引入 bundle/profile 两级</td>
+</tr>
+<tr>
+<td><code>Loader</code></td>
+<td><code>Loader</code></td>
+<td>保持</td>
+</tr>
+<tr>
+<td><code>invariant</code></td>
+<td><code>core/invariants/*.py</code></td>
+<td>伴生模块</td>
+</tr>
+</tbody></table>
+<h2 id="附录-b验证命令速查">附录 B：验证命令速查<a class="anchor" href="#附录-b验证命令速查">#</a></h2>
+<pre><code class="language-bash"># 内核原型自检
+cd zhuangtaiji &amp;&amp; python test/test_kernel.py
+
+# 内核行为演示
+cd zhuangtaiji &amp;&amp; python tools/kernel_demo.py
+
+# 项目原有测试（改造前先跑一遍作为基线）
+python test_verify.py &amp;&amp; python test_enhancements.py
+
+# 自举模型单独验证
+python -c &quot;import sys; sys.path.insert(0,&#39;.&#39;); from core import create_state_machine; import json; m=json.load(open(&#39;core/kernel/fiber_model.json&#39;,encoding=&#39;utf-8&#39;)); print(create_state_machine(&#39;fiber&#39;, {&#39;state_machines&#39;:{&#39;fiber&#39;:m}}).current_state_id)&quot;
+</code></pre>
+
+    <div class="foot">
+      基于对 <code>C:/deepseek-harness-master</code> 的源码研究与对 <code>zhuangtaiji</code>（commit <code>fccb8e6</code>）的实测。<br>
+      交付物：本方案 + 可运行原型 <code>prototype/</code>（<code>python prototype/test_kernel.py</code> 48/48 通过）。原型为设计验证，非生产代码，局限见 §10.4。
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -28,15 +28,24 @@ from engine import CanvasProgressBar, THEME_DARK, ease_out_cubic
 
 # ---- P0~P3 新增 Tab ----
 from core.plugin import PluginRegistry, ensure_discovered
+from core.registries import engine_sections
 from ui.visualization_tab import VisualizationTab
 from ui.analysis_tab import AnalysisTab
 from ui.orchestrator_tab import OrchestratorTab
 from ui.plugin_tab import PluginTab
 
-_BUILTIN_KINDS = {
-    "state_machine", "behavior_tree", "decision_tree", "petri_net",
-    "markov_chain", "rule_engine", "difference_engine",
-}
+def _sec(kind: str) -> str:
+    """取范式在 config.json 中的段名（唯一归属：引擎注册表）。
+
+    :param kind: 范式 kind。
+    :returns: 段名，如 ``"state_machines"``。
+    :raises KeyError: 该范式未注册（错误信息列出全部可用 kind）。
+    """
+    sections = engine_sections()
+    if kind not in sections:
+        raise KeyError(
+            f"范式 {kind!r} 未注册；可用: {sorted(sections)}")
+    return sections[kind]
 
 
 # ==========================================================
@@ -57,7 +66,7 @@ class WorkflowEngineTab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.full_config = load_config()
-        machine_names = list(self.full_config["state_machines"].keys())
+        machine_names = list(self.full_config[_sec("state_machine")].keys())
         self.sm_instances = {}
         for name in machine_names:
             self.sm_instances[name] = create_state_machine(
@@ -324,7 +333,7 @@ class WorkflowEngineTab(tk.Frame):
         for i, name in enumerate(self.pipeline):
             sm = self.sm_instances[name]
             y = y_start + i * (box_h + gap)
-            desc = self.full_config["state_machines"][name].get("description", "")
+            desc = self.full_config[_sec("state_machine")][name].get("description", "")
             is_current = (i == self.stage_index)
             is_done = (i < self.stage_index)
             if is_current:
@@ -369,7 +378,7 @@ class BehaviorTreeTab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.full_config = load_config()
-        self.spec = self.full_config["behavior_trees"]["BT_SelfHeal"]
+        self.spec = self.full_config[_sec("behavior_tree")]["BT_SelfHeal"]
         self.bb = Blackboard()
         self.bt = build_behavior_tree(self.spec, blackboard=self.bb)
         self._build_ui()
@@ -475,7 +484,7 @@ class DecisionTreeTab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.full_config = load_config()
-        self.spec = self.full_config["decision_trees"]["DT_Route"]
+        self.spec = self.full_config[_sec("decision_tree")]["DT_Route"]
         self.dt = build_decision_tree(self.spec)
         self._build_ui()
 
@@ -549,7 +558,7 @@ class DifferenceEngineTab(tk.Frame):
         super().__init__(master)
         self.full_config = load_config()
         self.fd = FiniteDifference(
-            self.full_config["difference_engine"]["progress_predictor"]["initial_values"]
+            self.full_config[_sec("difference_engine")]["progress_predictor"]["initial_values"]
         )
         self.tracker_state = {"status": "idle", "progress": 0}
         self.tracker = ReactiveTracker(
@@ -637,7 +646,7 @@ class PetriNetTab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.full_config = load_config()
-        self.spec = self.full_config["petri_nets"]["PN_Order"]
+        self.spec = self.full_config[_sec("petri_net")]["PN_Order"]
         self.pn = build_petri_net(self.spec)
         self._build_ui()
 
@@ -715,7 +724,7 @@ class RuleEngineTab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.full_config = load_config()
-        self.spec = self.full_config["rule_engines"]["RE_Promo"]
+        self.spec = self.full_config[_sec("rule_engine")]["RE_Promo"]
         self.engine = build_rule_engine(self.spec)
         self._build_ui()
 
@@ -793,7 +802,7 @@ class MarkovTab(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.full_config = load_config()
-        self.chains = self.full_config["markov_chains"]
+        self.chains = self.full_config[_sec("markov_chain")]
         self.current_name = list(self.chains.keys())[0]
         self.mc = build_markov_chain(self.chains[self.current_name])
         self._build_ui()
@@ -816,7 +825,12 @@ class MarkovTab(tk.Frame):
         ttk.Combobox(left, textvariable=self.chain_var,
                      values=list(self.chains.keys()),
                      state="readonly").pack(fill="x", pady=2)
-        self.chain_var.trace("w", self._on_select)
+        # 注意：这里必须用 trace_add("write", …) 而非已废弃的 trace("w", …)。
+        # trace_variable 走的是 Tcl 的 `trace variable` 子命令，**Tcl 9 已移除它**
+        # （Python 3.14 起变量提示 "not supported with Tcl 9"），调用会抛
+        # TclError: bad option "variable"。trace_add 自 Python 3.6 起可用，
+        # 向前兼容 Tcl 8 与 9。
+        self.chain_var.trace_add("write", self._on_select)
         ttk.Button(left, text="▶ 单步演化",
                    command=self._on_step).pack(fill="x", pady=4)
         ttk.Button(left, text="⏩ 仿真 20 步",
@@ -877,6 +891,30 @@ class MarkovTab(tk.Frame):
 # ==========================================================
 # 主应用：Notebook 容器
 # ==========================================================
+# ==========================================================
+# 内置范式 → 专属 Tab 的装配表
+# ==========================================================
+# 注意：本表引用各 Tab 类，因此**必须定义在所有 Tab 类之后**——放在文件顶部会在
+# 模块加载时抛 NameError（`WorkflowEngineTab` 尚未定义）。
+#
+# 每个内置范式一个专属 Tab：各范式的控件差异决定了它们无法完全泛化，所以保留
+# "kind → Tab 类"的显式声明；但 **config 段名一律从引擎注册表查**（``_sec()``），
+# 因此本文件不出现任何段名字面量，新增范式不会造成漏改。
+#   元组 = (kind, 属性别名, Tab 类, 标题)
+_BUILTIN_TABS = [
+    ("state_machine", "wf", WorkflowEngineTab, "  工作流引擎 (状态机/HSM)  "),
+    ("behavior_tree", "bt", BehaviorTreeTab, "  行为树  "),
+    ("decision_tree", "dt", DecisionTreeTab, "  决策树  "),
+    ("difference_engine", "de", DifferenceEngineTab, "  差分引擎  "),
+    ("petri_net", "pn", PetriNetTab, "  Petri 网  "),
+    ("rule_engine", "re", RuleEngineTab, "  规则引擎  "),
+    ("markov_chain", "mc", MarkovTab, "  马尔可夫链  "),
+]
+
+#: 已有专属 Tab 的范式集合（供"插件 Tab"循环跳过——单一归属，不再另写一份）。
+_BUILTIN_KINDS = {kind for kind, _alias, _cls, _title in _BUILTIN_TABS}
+
+
 class Application(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
@@ -887,21 +925,12 @@ class Application(tk.Frame):
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True)
 
-        self.tab_wf = WorkflowEngineTab(notebook)
-        self.tab_bt = BehaviorTreeTab(notebook)
-        self.tab_dt = DecisionTreeTab(notebook)
-        self.tab_de = DifferenceEngineTab(notebook)
-        self.tab_pn = PetriNetTab(notebook)
-        self.tab_re = RuleEngineTab(notebook)
-        self.tab_mc = MarkovTab(notebook)
-
-        notebook.add(self.tab_wf, text="  工作流引擎 (状态机/HSM)  ")
-        notebook.add(self.tab_bt, text="  行为树  ")
-        notebook.add(self.tab_dt, text="  决策树  ")
-        notebook.add(self.tab_de, text="  差分引擎  ")
-        notebook.add(self.tab_pn, text="  Petri 网  ")
-        notebook.add(self.tab_re, text="  规则引擎  ")
-        notebook.add(self.tab_mc, text="  马尔可夫链  ")
+        self.tabs = {}
+        for kind, alias, tab_cls, title in _BUILTIN_TABS:
+            tab = tab_cls(notebook)
+            self.tabs[kind] = tab
+            setattr(self, f"tab_{alias}", tab)      # 保持历史属性名可用
+            notebook.add(tab, text=title)
 
         # ---- P0-2 可视化（图形渲染 + 轨迹高亮）----
         self.tab_viz = VisualizationTab(notebook)

@@ -1,6 +1,32 @@
-import tkinter as tk
+# -*- coding: utf-8 -*-
+"""Canvas 进度条组件（含缓动函数与主题常量）。
+
+**为什么 tkinter 是延迟导入的**：本模块里的缓动函数（``ease_out_quad`` 等）与
+主题常量是纯逻辑，``test/test_verify.py`` 只用到这些。但 ``tkinter`` 在部分
+环境（CI、headless、未装 ``python3-tk`` 的 Linux）不可用——若在模块顶层导入，
+纯逻辑测试会因为一个 GUI 依赖而整体无法运行。
+
+因此改为：**只在真正构造控件时**才要求 tkinter 存在，并给出可操作的提示。
+这样「无 GUI 环境跑逻辑测试」与「有 GUI 环境跑界面」两者互不干扰。
+"""
 from dataclasses import dataclass
 from typing import Optional, Callable
+
+
+def _require_tk():
+    """获取 tkinter 模块；不可用时抛出**可操作**的错误。
+
+    :raises RuntimeError: 运行环境未提供 tkinter。
+    """
+    try:
+        import tkinter as tk
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "创建进度条控件需要 tkinter。"
+            "Linux 请安装 python3-tk；Windows/macOS 请使用自带 tkinter 的官方 Python。"
+            "（本模块的缓动函数与主题常量无需 tkinter，可直接导入。）"
+        ) from exc
+    return tk
 
 
 # ==========================================
@@ -58,6 +84,7 @@ THEME_WARM = BarTheme(
 class CanvasProgressBar:
     def __init__(self, parent, width=400, height=25,
                  theme: BarTheme = None, show_percentage=True):
+        tk = _require_tk()          # 仅在真正创建控件时才要求 tkinter
         self.theme = theme or DEFAULT_THEME
 
         self.canvas = tk.Canvas(parent, width=width, height=height,

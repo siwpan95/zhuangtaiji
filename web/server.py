@@ -34,6 +34,7 @@ if ROOT not in sys.path:
 
 from core import load_config, build_adapter, analysis, renderers  # noqa: E402
 from core import plugin as _plugin  # noqa: E402
+from core.registries import engine_of, engine_sections  # noqa: E402
 from core.orchestrator import Orchestrator  # noqa: E402
 
 DIST = os.path.join(ROOT, "web", "webui", "dist")
@@ -171,23 +172,23 @@ def _graph_to_spec(payload: dict) -> dict:
     }
 
 
+def _engine_catalog() -> dict:
+    """``{kind: [实例名, ...]}``——从引擎注册表派生。
+
+    取代过去 ``web/server.py`` 内**三处**各自硬编码的 kind → 段名 映射表
+    （``_validate_spec``、``api/engines``、``_catalog``）：新增一个范式只需
+    ``register_engine()`` 一次，所有端点自动可见。
+    """
+    _plugin.ensure_discovered()
+    cfg = load_config()
+    return {kind: list((cfg.get(section) or {}).keys())
+            for kind, section in engine_sections().items()}
+
+
 def _validate_spec(spec: dict) -> str:
     """返回错误描述，空串表示通过。"""
     kinds = set(_plugin.PluginRegistry.kinds())
-    cfg = load_config()
-    section_of = {
-        "state_machine": "state_machines", "behavior_tree": "behavior_trees",
-        "decision_tree": "decision_trees", "petri_net": "petri_nets",
-        "markov_chain": "markov_chains", "rule_engine": "rule_engines",
-        "difference_engine": "difference_engine",
-    }
-    catalog = {k: list(cfg.get(s, {}).keys()) for k, s in section_of.items()}
-    for pl in _plugin.PluginRegistry.all():
-        if pl.specs_provider:
-            try:
-                catalog.setdefault(pl.kind, list(pl.specs_provider().keys()))
-            except Exception:
-                pass
+    catalog = _engine_catalog()
     engines = spec.get("engines", {})
     for alias, e in engines.items():
         kind, name = e.get("kind"), e.get("name")
@@ -329,24 +330,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             if p == "api/engines":
-                cfg = load_config()
-                kinds = {
-                    "state_machine": "state_machines",
-                    "behavior_tree": "behavior_trees",
-                    "decision_tree": "decision_trees",
-                    "petri_net": "petri_nets",
-                    "markov_chain": "markov_chains",
-                    "rule_engine": "rule_engines",
-                    "difference_engine": "difference_engine",
-                }
-                cat = {k: list(cfg.get(s, {}).keys()) for k, s in kinds.items()}
-                for pl in _plugin.PluginRegistry.all():
-                    if pl.specs_provider:
-                        try:
-                            cat.setdefault(pl.kind, list(pl.specs_provider().keys()))
-                        except Exception:
-                            pass
-                return self._send(200, cat)
+                return self._send(200, _engine_catalog())
             if p == "api/plugins":
                 _plugin.ensure_discovered()
                 return self._send(200, [{"kind": pl.kind, "label": pl.label,
@@ -379,10 +363,13 @@ class Handler(BaseHTTPRequestHandler):
                                         **_spec_to_graph(spec)})
             if p.startswith("api/analysis/"):
                 _, _, kind, name = p.split("/")
-                spec = load_config()[{
-                    "petri_net": "petri_nets", "state_machine": "state_machines",
-                    "markov_chain": "markov_chains", "decision_tree": "decision_trees",
-                }[kind]][name]
+                meta = engine_of(kind)
+                if meta is None:
+                    return self._send(404, {"error": f"未知范式: {kind}"})
+                spec = (load_config().get(meta.section) or {}).get(name)
+                if spec is None:
+                    return self._send(404,
+                                      {"error": f"{meta.section} 中不存在实例: {name}"})
                 return self._send(200, {"report": analysis.format_analysis(kind, spec)})
             if p.startswith("api/engine/"):
                 _, _, kind, name = p.split("/")
@@ -393,24 +380,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
     def _catalog(self):
-        cfg = load_config()
-        kinds = {
-            "state_machine": "state_machines",
-            "behavior_tree": "behavior_trees",
-            "decision_tree": "decision_trees",
-            "petri_net": "petri_nets",
-            "markov_chain": "markov_chains",
-            "rule_engine": "rule_engines",
-            "difference_engine": "difference_engine",
-        }
-        cat = {k: list(cfg.get(s, {}).keys()) for k, s in kinds.items()}
-        for pl in _plugin.PluginRegistry.all():
-            if pl.specs_provider:
-                try:
-                    cat.setdefault(pl.kind, list(pl.specs_provider().keys()))
-                except Exception:
-                    pass
-        return cat
+        return _engine_catalog()
 
     # ---- POST / PUT / DELETE ----
     def do_POST(self):

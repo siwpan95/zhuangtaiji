@@ -1,0 +1,42 @@
+{
+  "_comment": "Cordis Fiber 生命周期 —— 用本项目自己的状态机配置格式描述项目自己的内核。这是『自举一致性测试』的模型：prototype/test_kernel.py 会驱动真实内核与这份模型锁步前进，任何不一致即测试失败。",
+  "type": "flat",
+  "initial": "PENDING",
+  "description": "Cordis Fiber 生命周期（内核的自模型）",
+  "states": {
+    "PENDING": {
+      "content": "已挂载；inject 未满足或尚未求值；apply 尚未执行",
+      "on_enter": "join_pending_list",
+      "on_exit": "leave_pending_list",
+      "transitions": {
+        "provide": {
+          "target": "ACTIVE",
+          "guard": "inject_satisfied"
+        },
+        "provide_error": "FAILED",
+        "dispose": "DISPOSED"
+      }
+    },
+    "ACTIVE": {
+      "content": "apply 已执行；持有 N 个 effect",
+      "on_enter": "run_apply",
+      "on_exit": "unwind_effects",
+      "transitions": {
+        "unprovide": "PENDING",
+        "dispose": "DISPOSED"
+      }
+    },
+    "FAILED": {
+      "content": "apply 抛错；本次收集的 effect 已全部回滚",
+      "on_enter": "rollback_effects",
+      "transitions": {
+        "unprovide": "PENDING",
+        "dispose": "DISPOSED"
+      }
+    },
+    "DISPOSED": {
+      "content": "已卸载；effect 逆序回收完毕，服务清空",
+      "transitions": {}
+    }
+  }
+}

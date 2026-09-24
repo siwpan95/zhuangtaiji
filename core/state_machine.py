@@ -1,33 +1,15 @@
 import time
 
 from .hierarchical_state_machine import HierarchicalStateMachine
+from .registries import (
+    ACTION_REGISTRY, GUARD_REGISTRY, context, register_action, register_guard,
+)
 
-
-# ==========================================
-# 守卫（Guard）注册表
-# ==========================================
-# 声明式配置中的 guard 只能写字符串名；真正的可调用守卫在此注册。
-# 用法：register_guard("is_ok", lambda ctx: ctx.get("ok"))
-GUARD_REGISTRY: dict = {}
-
-
-def register_guard(name: str, fn) -> None:
-    """注册一个命名守卫函数，供 config.json 中的 guard 字段引用。"""
-    GUARD_REGISTRY[name] = fn
-
-
-# ==========================================
-# 动作（Action）注册表
-# ==========================================
-# 与 GUARD_REGISTRY 类似：config 中的 on_enter / on_exit / transition 描述，
-# 若其值为已注册动作名，则触发真实回调（否则仅作为可阅读的描述被外部监听）。
-# 用法：register_action("挂载空闲监听器", lambda ctx, detail: ...)
-ACTION_REGISTRY: dict = {}
-
-
-def register_action(name: str, fn) -> None:
-    """注册一个命名动作函数，供 state 的 on_enter/on_exit 引用。"""
-    ACTION_REGISTRY[name] = fn
+__all__ = [
+    "GenericStateMachine", "create_state_machine",
+    "GUARD_REGISTRY", "ACTION_REGISTRY", "register_guard", "register_action",
+    "context",
+]
 
 
 # ==========================================
@@ -49,21 +31,68 @@ class GenericStateMachine:
         if not config:
             raise ValueError(f"找不到状态机配置: {machine_name}")
 
+        # ---- load 期结构校验（fail-loud）：把"首次 trigger 才抛裸 KeyError"
+        # 提前到装配阶段，并给出精确定位 ----
+        states = config.get("states")
+        if not isinstance(states, dict) or not states:
+            raise ValueError(
+                f"状态机 {machine_name!r} 缺少 states 段或为空")
+        initial = config.get("initial")
+        if initial not in states:
+            raise ValueError(
+                f"状态机 {machine_name!r} 的 initial={initial!r} 不是合法状态；"
+                f"可用：{sorted(states)}")
+        for sid, spec in states.items():
+            if not isinstance(spec, dict):
+                raise ValueError(
+                    f"状态机 {machine_name!r} 的状态 {sid!r} 配置不是映射")
+            trans = spec.get("transitions") or {}
+            if not isinstance(trans, dict):
+                raise ValueError(
+                    f"状态机 {machine_name!r}.states.{sid}.transitions 不是映射")
+            for ev, tgt in trans.items():
+                # 转移值为 dict 时取其中的 target（与 trigger() 解析口径一致）
+                if isinstance(tgt, dict):
+                    tgt_state = tgt.get("target")
+                elif isinstance(tgt, str):
+                    tgt_state = tgt
+                else:
+                    tgt_state = None
+                # 内部转移（"#..."）指向动作而非状态，跳过校验
+                if isinstance(tgt_state, str) and tgt_state.startswith("#"):
+                    continue
+                if not isinstance(tgt_state, str) or tgt_state not in states:
+                    raise ValueError(
+                        f"状态机 {machine_name!r}.states.{sid}.transitions.{ev} 的 "
+                        f"target={tgt_state!r} 不存在；可用：{sorted(states)}")
+
         self.name = machine_name
-        self.states = config["states"]
-        self.current_state_id = config["initial"]
+        self.states = states
+        self.current_state_id = initial
         self.on_action = on_action
 
-        # 守卫函数表：实例级 guards 优先，其次全局 GUARD_REGISTRY
-        self.guards = dict(GUARD_REGISTRY)
-        if isinstance(guards, dict):
-            self.guards.update(guards)
+        # 守卫解析：实例级 guards 显式覆盖优先；其余**实时**查询进程注册表，
+        # 因此 register_guard(...).dispose() 对所有实例（含已创建的）立即生效。
+        self._guard_overrides = dict(guards) if isinstance(guards, dict) else {}
 
         # 转移历史：[{"from":str, "event":str, "to":str, "time":float}, ...]
         self.history: list[dict] = []
 
         # 进入初始状态时触发 on_enter
         self._invoke_action("enter", self.current_state_id, context={})
+
+    # ---------- 守卫解析 ----------
+    @property
+    def guards(self) -> dict:
+        """当前生效的守卫表：实例级覆盖 + 进程注册表的**实时**合并。
+
+        返回新的 dict（不是内部引用），因此修改它不会影响转移判定。
+        要增删守卫请用 ``register_guard()``（可撤销）；要为本实例单独指定，
+        请用构造参数 ``guards={...}``。实例级覆盖优先于注册表。
+        """
+        merged = dict(GUARD_REGISTRY)
+        merged.update(self._guard_overrides)
+        return merged
 
     # ---------- 事件驱动 ----------
     def trigger(self, event_name, context=None):
@@ -98,10 +127,17 @@ class GenericStateMachine:
             content = self.states[self.current_state_id].get("content", "无内容")
             return self.current_state_id, content
 
-        # 执行 guard 条件检查
+        # 执行 guard 条件检查（fail-closed：查不到即拒绝，绝不静默放行）
         if guard_name:
             guard_fn = self.guards.get(guard_name)
-            if callable(guard_fn) and not guard_fn(context):
+            if guard_fn is None:
+                return None, (f"Guard [{guard_name}] 未注册：转移被拒绝。"
+                              f"请用 register_guard({guard_name!r}, fn) 注册，"
+                              f"或修正 config 中的 guard 名")
+            if not callable(guard_fn):
+                return None, (f"Guard [{guard_name}] 不是可调用对象"
+                              f"（实为 {type(guard_fn).__name__}）：转移被拒绝")
+            if not guard_fn(context):
                 return None, f"Guard [{guard_name}] 条件不满足"
 
         # 离开旧状态

@@ -60,6 +60,11 @@ from .engine_adapters import (
     PetriEngine, MarkovEngine, RuleEngineAdapter, DifferenceEngineAdapter,
     build_adapter,
 )
+
+# ---- 内核（Context / effect / inject / 事件派发 / 分层装配）----
+from . import kernel
+from .kernel import Context, Disposable, Registry, make_default_context
+
 from . import renderers
 from . import plugin
 from . import analysis

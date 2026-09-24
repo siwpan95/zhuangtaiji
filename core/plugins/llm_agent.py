@@ -142,6 +142,5 @@ PLUGIN = EnginePlugin(
     label="LLM Agent (插件 · 离线可跑)",
     description="LLM 作受限控制器：仅能触发声明合法事件（安全护栏）",
     engine_cls=LLMAgentEngine,
-    specs_provider=lambda: __import__("core.config", fromlist=["load_config"])
-        .load_config().get("llm_agents", {}),
+    section="llm_agents",
 )

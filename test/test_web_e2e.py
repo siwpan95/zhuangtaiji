@@ -45,6 +45,16 @@ def jdel(p):
 
 
 def main():
+    # 前置产物检查：本用例验证的是「前端构建产物 + 编排 API」。缺少 dist 时属于
+    # 环境未就绪，不是代码缺陷——以 SKIP 退出码（77）退出，由 tools/run_tests.py
+    # 归类为 ENV-SKIP，避免把"没跑 npm run build"误报成"代码坏了"。
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dist_index = os.path.join(root, "web", "webui", "dist", "index.html")
+    if not os.path.isfile(dist_index):
+        print("SKIP: 缺少前端构建产物 web/webui/dist/index.html")
+        print("      请先执行： cd web/webui && npm install && npm run build")
+        sys.exit(77)
+
     httpd = h.ThreadingHTTPServer(("127.0.0.1", 8151), ws.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     time.sleep(0.3)

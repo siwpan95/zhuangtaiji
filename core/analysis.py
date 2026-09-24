@@ -269,7 +269,21 @@ def analyze_decision_tree(spec: Dict[str, Any]) -> Dict[str, Any]:
 # ==========================================================
 # 统一格式化
 # ==========================================================
+#: 本模块实现了形式化分析的范式。其余范式没有分析实现——
+#: 这张表是**能力声明**（唯一归属），UI 与 Web 端点都从它派生，
+#: 因此不会出现"某个入口列出了一个其实分析不了的范式"。
+SUPPORTED_KINDS = ("petri_net", "state_machine", "markov_chain", "decision_tree")
+
+
 def format_analysis(kind: str, spec: Dict[str, Any]) -> str:
+    """对指定范式做形式化分析并返回可读报告。
+
+    :param kind: 范式 kind，须在 :data:`SUPPORTED_KINDS` 中。
+    :param spec: 该范式实例的配置。
+    :returns: 多行报告文本。
+    :raises ValueError: 该范式没有分析实现（不再返回"暂不支持"字符串——
+        调用方无法区分"报告内容"与"不支持提示"）。
+    """
     if kind == "petri_net":
         r = analyze_petri(spec)
         lines = [
@@ -305,4 +319,5 @@ def format_analysis(kind: str, spec: Dict[str, Any]) -> str:
             f"特征重要性(分裂次数): {r['feature_importance']}",
         ]
         return "\n".join(lines)
-    return "该范式暂不支持形式化分析。"
+    raise ValueError(
+        f"范式 {kind!r} 没有形式化分析实现；支持: {list(SUPPORTED_KINDS)}")

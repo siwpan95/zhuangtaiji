@@ -12,18 +12,14 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 
-from core import load_config, build_adapter, renderers
+from core import load_config, build_adapter, renderers, plugin
 from core.adapters_io import graph_to_mermaid, graph_to_dot
+from core.registries import engine_kinds
 
-_KINDS = [
-    ("state_machine", "state_machines", "状态机/HSM"),
-    ("behavior_tree", "behavior_trees", "行为树"),
-    ("decision_tree", "decision_trees", "决策树"),
-    ("petri_net", "petri_nets", "Petri 网"),
-    ("markov_chain", "markov_chains", "马尔可夫链"),
-    ("rule_engine", "rule_engines", "规则引擎"),
-    ("difference_engine", "difference_engine", "差分引擎"),
-]
+# 完全从引擎注册表派生：新增一个范式（含 core/plugins/ 下自动发现的插件）
+# 会自动出现在本 Tab 的下拉框里，无需改这里的代码。
+plugin.ensure_discovered()
+_KINDS = [(meta.kind, meta.section, meta.label) for meta in engine_kinds()]
 
 
 def _log(text_widget, msg):
