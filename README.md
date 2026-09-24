@@ -29,6 +29,7 @@
 zhuangtaiji/
 ├── config.json              # 所有引擎与 demo 编排的配置（单一数据源）
 ├── main.py                  # Tkinter 工作台入口
+├── CHANGELOG.md             # 版本更新日志（与注解 tag / Gitee Release 同源）
 ├── core/                    # 引擎内核（纯标准库）
 │   ├── state_machine.py / hierarchical_state_machine.py
 │   ├── behavior_tree.py / decision_tree.py / difference_engine.py
@@ -158,3 +159,8 @@ PYTHONPATH=. python test/test_web_e2e.py       # Web 端到端（需先 cd web/w
 所有引擎与 demo 编排定义在 `config.json`，结构见文件内注释；编排层读取
 `orchestration` 段（`engines` / `bindings` / `start`）。可视化编辑后保存为
 `web/orchestrations.json`。
+
+## 变更日志
+
+各版本的改动、门禁实测与升级提示见 [`CHANGELOG.md`](CHANGELOG.md)。每个版本对应一个
+**注解 tag** 与一个 [Gitee Release](https://gitee.com/siwpan/zhuangtaiji/releases)，三者说明同源。

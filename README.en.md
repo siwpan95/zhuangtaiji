@@ -57,6 +57,11 @@ is missing; it is reported prominently but not counted as a failure.
 `core/` engine kernel · `ui/` Tkinter workbench · `web/` REST server + React editor ·
 `test/` test suite · `tools/` test gate, kernel demo and doc builder.
 
+## Changelog
+
+See [`CHANGELOG.md`](CHANGELOG.md) (Chinese). Every release is an annotated tag plus a
+[Gitee Release](https://gitee.com/siwpan/zhuangtaiji/releases); both mirror that file.
+
 ## License
 
 MIT — see `LICENSE`. Copyright 2026 siwpan.
