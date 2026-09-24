@@ -45,8 +45,8 @@ except ModuleNotFoundError:
     # 而不是直接把本测试永久判为环境跳过。
     print("SKIP-REQUIRES: tkinter")
     print("      当前解释器没有 tkinter；门禁会自动尝试带 tkinter 的解释器")
-    print("      （例如 D:\\Python314\\python.exe），或手动指定："
-          "python tools/run_tests.py --python <path>")
+    print("      （探测逻辑见 tools/run_tests.py 的 _candidate_interpreters），"
+          "或手动指定：python tools/run_tests.py --python <path>")
     sys.exit(77)
 
 _PASS = 0

@@ -4,6 +4,9 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
+# ---- 测试产物（测试输出转录；保留在本地，不入库）----
+test/_out.txt
+
 # ---- 用户持久化编排（自动生成，按需保留可删除此行）----
 web/orchestrations.json
 

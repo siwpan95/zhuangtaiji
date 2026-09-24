@@ -6,7 +6,7 @@
 |---|---|
 | 目标仓库 | `zhuangtaiji`（Gitee: `siwpan/zhuangtaiji`，commit `fccb8e6`） |
 | 项目规模 | 6,660 行 Python，44 个文件，纯标准库（`requirements.txt` 仅 `openai`） |
-| 参照研究 | 《DeepSeek Harness 源码深度研究报告》（`C:/deepseek-harness-master`） |
+| 参照研究 | 《DeepSeek Harness 源码深度研究报告》（Cordis 参考实现 `deepseek-harness`，DSH） |
 | 本方案附带 | 内核已落位 `core/kernel/`（48 项断言全通过，含自举一致性验证） |
 | 落地进度 | P0–P4 全部完成并通过统一门禁（通过 5 · 失败 0 · 环境跳过 1；内核 80 项断言） |
 | 日期 | 2026-09-24 |

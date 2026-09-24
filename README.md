@@ -32,32 +32,39 @@ zhuangtaiji/
 ├── core/                    # 引擎内核（纯标准库）
 │   ├── state_machine.py / hierarchical_state_machine.py
 │   ├── behavior_tree.py / decision_tree.py / difference_engine.py
-│   ├── petri_net.py / markov_chain.py / rule_engine.py / decision_tables.py
+│   ├── petri_net.py / markov_chain.py / rule_engine.py
 │   ├── engine_base.py       # Engine / EngineEvent / Graph 等契约
 │   ├── engine_adapters.py   # 各引擎 -> 统一 Engine 接口
 │   ├── orchestrator.py      # 事件总线 + Orchestrator（编排层）
+│   ├── config.py            # 配置加载 + 分层 patches 叠加
+│   ├── registries.py        # 守卫 / 动作 / 引擎 / 插件注册表（由内核 Context 承载）
 │   ├── analysis.py / renderers.py / plugin.py / adapters_io.py
+│   ├── plugins/             # 以插件形态接入的范式（decision_table / llm_agent）
 │   ├── kernel/              # 内核：Context / effect / inject / 事件派发 / 分层装配
 │   │   ├── context.py / disposable.py / events.py / loader.py / registry.py
 │   │   └── fiber_model.json # 内核生命周期的自模型（用本项目状态机格式书写）
 │   └── __init__.py          # 统一导出
-├── ui/
-│   └── application.py       # Tkinter 工作台
+├── ui/                      # Tkinter 工作台（入口 + 各功能 Tab）
+│   ├── application.py / analysis_tab.py / visualization_tab.py
+│   └── orchestrator_tab.py / plugin_tab.py
 ├── engine/
 │   └── progress_bar.py      # Canvas 进度条组件（tkinter 延迟导入，便于无头测试）
 ├── tools/
-│   └── run_tests.py         # 测试与门禁统一入口
+│   ├── run_tests.py         # 测试与门禁统一入口
+│   ├── kernel_demo.py       # 内核能力演示（七个真实痛点）
+│   └── build_doc.mjs        # 方案文档构建：md → html（依赖 marked）
 ├── web/
 │   ├── server.py            # 标准库 http.server 的 REST 后端 + 静态托管
 │   ├── static/              # 兜底静态页（dist 缺失时使用）
-│   ├── orchestrations.json  # 用户持久化的编排（自动生成，可删）
+│   ├── orchestrations.json  # 用户持久化的编排（自动生成，可删；不入库）
 │   └── webui/               # 真正的 Vite + React + @xyflow/react 前端
 │       ├── index.html / package.json / vite.config.js
 │       ├── src/{main.jsx, App.jsx, EngineNode.jsx, api.js, index.css}
-│       └── dist/            # npm run build 产物（由 server.py 托管）
-├── test_verify.py           # 原始回归测试
-├── test_enhancements.py     # P0~P3 增强测试
-└── test_web_e2e.py          # Web 端到端测试
+│       └── dist/            # npm run build 产物（由 server.py 托管；不入库）
+├── test/                    # 全部测试（统一入口：python tools/run_tests.py）
+│   ├── test_verify.py / test_enhancements.py / test_kernel.py
+│   └── test_config_patches.py / test_ui_smoke.py / test_web_e2e.py
+└── zhuangtaiji-Cordis内核重构方案.md   # 内核重构方案（同名 .html 由 build_doc.mjs 生成）
 ```
 
 ## 安装
@@ -132,6 +139,8 @@ python tools/run_tests.py kernel     # 只跑名字含 "kernel" 的测试
 PYTHONPATH=. python test/test_verify.py        # 原始功能回归
 PYTHONPATH=. python test/test_enhancements.py  # P0~P3 增强覆盖
 PYTHONPATH=. python test/test_kernel.py        # 内核断言 + 自举一致性（含 48 项）
+PYTHONPATH=. python test/test_config_patches.py # 配置 patches 分层叠加
+PYTHONPATH=. python test/test_ui_smoke.py      # Tkinter 界面冒烟（需带 tkinter 的解释器）
 PYTHONPATH=. python test/test_web_e2e.py       # Web 端到端（需先 cd web/webui && npm run build）
 ```
 

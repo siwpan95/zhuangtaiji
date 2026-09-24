@@ -1,11 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
-const require = createRequire('C:/deepseek-harness-master/package.json');
-const { marked } = require('marked');
+// 仓库根由脚本自身位置推导（tools/ 的上一级），不写死任何一台机器的绝对路径。
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const root = 'C:/Users/psw/WorkBuddy/2026-09-24-08-17-21/zhuangtaiji';
+// marked 从本脚本可解析到的 node_modules 解析（逐级向上 + NODE_PATH），
+// 缺失时明确报错并给出补救命令，而不是指向某个本机专有目录。
+const require = createRequire(import.meta.url);
+let marked;
+try {
+  ({ marked } = require('marked'));
+} catch (err) {
+  console.error('[build_doc] 缺少依赖 marked，无法把方案 md 渲染为 html。补救方式（任选其一）：');
+  console.error('          1) 在仓库根执行：npm install --no-save marked');
+  console.error('          2) 设置 NODE_PATH 指向已安装 marked 的 node_modules 后重试。');
+  process.exit(2);
+}
+
 const mdPath = path.join(root, 'zhuangtaiji-Cordis内核重构方案.md');
 const outPath = path.join(root, 'zhuangtaiji-Cordis内核重构方案.html');
 const md = fs.readFileSync(mdPath, 'utf8');
@@ -432,7 +445,7 @@ const doc = `<!DOCTYPE html>
     </div>
     ${html}
     <div class="foot">
-      基于对 <code>C:/deepseek-harness-master</code> 的源码研究与对 <code>zhuangtaiji</code>（commit <code>fccb8e6</code>）的实测。<br>
+      基于对 Cordis 参考实现 <code>deepseek-harness</code>（DSH）源码的研究与对 <code>zhuangtaiji</code>（commit <code>fccb8e6</code>）的实测。<br>
       交付物：本方案 + 可运行原型 <code>prototype/</code>（<code>python prototype/test_kernel.py</code> 48/48 通过）。原型为设计验证，非生产代码，局限见 §10.4。
     </div>
   </main>
