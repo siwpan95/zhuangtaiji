@@ -95,9 +95,12 @@ python main.py
 ### 2. Web 编排编辑器
 ```bash
 # 确保已执行上述 npm run build
-python web/server.py 8000
-# 浏览器打开 http://localhost:8000/
+python web/server.py 8011
+# 浏览器打开 http://localhost:8011/
 ```
+`8011` 是本项目登记的端口（`8000` 已被电台面板占用）；也可显式换端口：
+`python web/server.py <port>`。
+
 Web 端点的首页优先服务 `web/webui/dist`，缺失时回退 `web/static`。
 
 ### 3. 前端热更新开发模式（可选）

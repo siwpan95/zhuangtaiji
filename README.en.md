@@ -29,8 +29,11 @@ engine, decision table, LLM agent — into one configurable system driven by a s
 python main.py                     # Tkinter workbench
 
 cd web/webui && npm install && npm run build
-python web/server.py 8000          # then open http://localhost:8000/
+python web/server.py 8011          # then open http://localhost:8011/
 ```
+
+`8011` is this project's registered port (`8000` is taken by the radio panel); pass any
+other port explicitly instead: `python web/server.py <port>`.
 
 ## Tests
 

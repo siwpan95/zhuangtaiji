@@ -151,7 +151,7 @@ blockquote p{margin:6px 0}
 </tr>
 <tr>
 <td>项目规模</td>
-<td>6,660 行 Python，44 个文件，纯标准库（<code>requirements.txt</code> 仅 <code>openai</code>）</td>
+<td>撰写时快照：6,660 行 Python，44 个文件，纯标准库（<code>requirements.txt</code> 仅 <code>openai</code>）（改造后实测见下方注）</td>
 </tr>
 <tr>
 <td>参照研究</td>
@@ -163,13 +163,19 @@ blockquote p{margin:6px 0}
 </tr>
 <tr>
 <td>落地进度</td>
-<td>P0–P4 全部完成并通过统一门禁（通过 5 · 失败 0 · 环境跳过 1；内核 80 项断言）</td>
+<td>P0–P4 全部完成并通过统一门禁（撰写机：通过 5 · 失败 0 · 环境跳过 1；内核 80 项断言）（口径见下方注）</td>
 </tr>
 <tr>
 <td>日期</td>
 <td>2026-09-24</td>
 </tr>
 </tbody></table>
+<blockquote>
+<p><strong>注（数值口径）</strong>：上表「项目规模」「落地进度」是方案撰写时的<strong>撰写机实测快照</strong>，不是跨机恒定值。
+改造后本机实测（提交 <code>66d94be</code>）：45 个 <code>.py</code>、10,992 行（含空行）；统一门禁
+<code>python tools/run_tests.py</code> 得到「通过 6 · 失败 0 · 环境跳过 0」——跳过数取决于该机是否装了带
+<code>tkinter</code> 的解释器（门禁会自动探测备用解释器并重试）。环境不同，行数与门禁分项都会随之变化。</p>
+</blockquote>
 <hr>
 <h2 id="摘要">摘要<a class="anchor" href="#摘要">#</a></h2>
 <p>你的判断是对的，而且比&quot;适合&quot;更强：<strong>这是同构，不是类比。</strong></p>

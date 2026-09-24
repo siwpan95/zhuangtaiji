@@ -18,8 +18,8 @@ React + @xyflow/react 节点编辑器）的 REST 后端。
   - GET    /api/orchestration/<name>/status 各引擎实时摘要
 * 托管构建产物：优先 ``web/webui/dist``，缺失时回退 ``web/static``。
 
-运行：  python web/server.py [port]      # 默认 8000
-访问：  http://localhost:8000/
+运行：  python web/server.py [port]      # 默认 8011（本项目登记的端口，见仓库内端口分配约定）
+访问：  http://localhost:8011/
 """
 import os
 import sys
@@ -466,7 +466,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8011
     _plugin.ensure_discovered()
     httpd = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     print(f"决策引擎 Web UI 已启动: http://localhost:{port}/  (Ctrl+C 退出)")
