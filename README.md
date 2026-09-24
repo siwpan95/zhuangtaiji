@@ -101,6 +101,12 @@ python web/server.py 8011
 `8011` 是本项目登记的端口（`8000` 已被电台面板占用）；也可显式换端口：
 `python web/server.py <port>`。
 
+> **安全默认（2026-09-24 起）**：服务**默认只绑定 `127.0.0.1`**（仅本机可访问）。
+> 该服务**没有鉴权**且响应头 `Access-Control-Allow-Origin: *`，因此**不要**把它暴露到局域网/公网——
+> 否则同网段任何人都能读写删你的编排（`PUT/DELETE/POST /api/orchestration/*`）。
+> 确有需要时显式打开并自担风险：`python web/server.py 8011 --host 0.0.0.0`
+> （等价的 `ZHUANGTAIJI_HOST=0.0.0.0`），并自行加防火墙或反向代理鉴权。
+
 Web 端点的首页优先服务 `web/webui/dist`，缺失时回退 `web/static`。
 
 ### 3. 前端热更新开发模式（可选）

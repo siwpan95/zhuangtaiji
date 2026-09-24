@@ -18,7 +18,11 @@ React + @xyflow/react 节点编辑器）的 REST 后端。
   - GET    /api/orchestration/<name>/status 各引擎实时摘要
 * 托管构建产物：优先 ``web/webui/dist``，缺失时回退 ``web/static``。
 
-运行：  python web/server.py [port]      # 默认 8011（本项目登记的端口，见仓库内端口分配约定）
+运行：  python web/server.py [port] [--host <addr>]
+        默认只绑定 **127.0.0.1**（仅本机可访问）——本服务无鉴权且 CORS 放开，
+        对局域网/公网开放等于把编排的读写删接口交给任何人。
+        确需局域网访问时显式打开：--host 0.0.0.0（或用环境变量 ZHUANGTAIJI_HOST），
+        并自行加防火墙/反向代理鉴权。
 访问：  http://localhost:8011/
 """
 import os
@@ -465,11 +469,38 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def _parse_argv(argv):
+    """解析 `[port] [--host <addr>]`。
+
+    默认 host = 127.0.0.1（仅本机）：本服务无鉴权、CORS 放开，
+    绑定 0.0.0.0 等于把编排读写删接口暴露给整个局域网，必须显式要求。
+    优先级：命令行 --host > 环境变量 ZHUANGTAIJI_HOST > 127.0.0.1。
+    """
+    port, host = 8011, os.environ.get("ZHUANGTAIJI_HOST", "127.0.0.1")
+    rest = list(argv)
+    while rest:
+        a = rest.pop(0)
+        if a == "--host":
+            if not rest:
+                raise SystemExit("--host 需要一个地址参数，例如 --host 0.0.0.0")
+            host = rest.pop(0)
+        elif a.startswith("--host="):
+            host = a.split("=", 1)[1]
+        elif a.isdigit():
+            port = int(a)
+        else:
+            raise SystemExit(f"无法识别的参数: {a}（用法: python web/server.py [port] [--host <addr>]）")
+    return port, host
+
+
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8011
+    port, host = _parse_argv(sys.argv[1:])
     _plugin.ensure_discovered()
-    httpd = ThreadingHTTPServer(("0.0.0.0", port), Handler)
-    print(f"决策引擎 Web UI 已启动: http://localhost:{port}/  (Ctrl+C 退出)")
+    httpd = ThreadingHTTPServer((host, port), Handler)
+    shown = "localhost" if host in ("127.0.0.1", "::1") else host
+    print(f"决策引擎 Web UI 已启动: http://{shown}:{port}/  (监听 {host}；Ctrl+C 退出)")
+    if host not in ("127.0.0.1", "::1"):
+        print(f"[警告] 正在监听 {host}，本服务无鉴权且 CORS 放开 —— 同网段任何人都能读写/删除编排。")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

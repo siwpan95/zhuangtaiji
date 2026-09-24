@@ -35,6 +35,13 @@ python web/server.py 8011          # then open http://localhost:8011/
 `8011` is this project's registered port (`8000` is taken by the radio panel); pass any
 other port explicitly instead: `python web/server.py <port>`.
 
+> **Secure default (since 2026-09-24)**: the server binds **`127.0.0.1` only** (localhost).
+> It has **no authentication** and replies with `Access-Control-Allow-Origin: *`, so never expose it to
+> a LAN/public network — anyone on the same network could read/write/delete your orchestrations
+> (`PUT/DELETE/POST /api/orchestration/*`). If you really need LAN access, opt in explicitly and take
+> the risk: `python web/server.py 8011 --host 0.0.0.0` (or `ZHUANGTAIJI_HOST=0.0.0.0`), and add a
+> firewall rule or an authenticating reverse proxy.
+
 ## Tests
 
 ```bash
