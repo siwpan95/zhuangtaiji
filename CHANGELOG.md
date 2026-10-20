@@ -50,6 +50,22 @@
   Web 服务含前端 `dist` 资源 全部可用
 - `python -m build` 产出 sdist + wheel；`twine check` 双 PASSED；`top_level.txt` 仅 `zhuangtaiji`
 
+### 发布记录
+
+| 索引 | 结果 | 证据 |
+| --- | --- | --- |
+| TestPyPI（干跑） | `1.1.0` 上传成功 | <https://test.pypi.org/project/zhuangtaiji/1.1.0/> |
+| **正式 PyPI** | `1.1.0` 已发布 | <https://pypi.org/project/zhuangtaiji/1.1.0/> |
+
+- `pip install zhuangtaiji==1.1.0` 后在**源码目录之外**运行复核（`__file__` 指向
+  site-packages 为证）：`load_config` / 状态机 `idle→finished` / 插件发现 9 范式 /
+  `config.json` 随包分发 / `zhuangtaiji-web` 入口 均通过
+- PyPI 权威记录：名称 `zhuangtaiji` · 版本 `1.1.0` · MIT · `>=3.8` ·
+  **零硬依赖**（`openai` 仅在 `llm` extra 下）
+- 上传按调试铁律 28 执行：`PYTHONIOENCODING=utf-8` + `--disable-progress-bar`
+  （GBK 控制台会让 twine 的富文本进度条崩溃并中断上传）；
+  以 **JSON API** 判定成功（`/simple/` 索引有 CDN 滞后），**同版本未重复上传**
+
 ### 升级提示
 
 ```python
