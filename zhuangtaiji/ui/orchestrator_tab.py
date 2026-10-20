@@ -10,8 +10,8 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 
-from core import load_config
-from core.orchestrator import Orchestrator, build_orchestrator_from_config
+from ..core import load_config
+from ..core.orchestrator import Orchestrator, build_orchestrator_from_config
 
 
 def _log(text_widget, msg):

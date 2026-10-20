@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.kernel import (  # noqa: E402
+from zhuangtaiji.core.kernel import (  # noqa: E402
     ACTIVE, PENDING, Context, Loader, Plugin, apply_patches, compose, hot_reload,
 )
 

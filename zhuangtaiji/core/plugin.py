@@ -124,14 +124,18 @@ class PluginRegistry:
         return [m.kind for m in engine_kinds()]
 
     @classmethod
-    def discover(cls, package_name: str = "core.plugins") -> List[str]:
+    def discover(cls, package_name: str = None) -> List[str]:
         """扫描插件包，导入所有模块并收集 ``PLUGIN`` 对象。
 
-        :param package_name: 要扫描的包名。
+        :param package_name: 要扫描的包名；默认由 ``__package__`` 推导为
+            ``zhuangtaiji.core.plugins``——**不硬编码**，这样包整体改名或挂到别的
+            命名空间下时，插件不会因为一个过期字符串而静默失联。
         :returns: 本次新发现的 kind 列表。
         :raises ImportError: 某个插件模块导入失败——**过去这里 ``except: continue``
             静默跳过**，导致"我写的插件没出现"且毫无提示。现在带上文件名抛错。
         """
+        if package_name is None:
+            package_name = f"{__package__}.plugins"
         try:
             pkg = importlib.import_module(package_name)
         except ModuleNotFoundError:
@@ -169,4 +173,4 @@ def ensure_discovered() -> List[str]:
 
     :returns: 首次调用时新发现的 kind 列表；已扫描过则返回空列表。
     """
-    return PluginRegistry.discover("core.plugins")
+    return PluginRegistry.discover()

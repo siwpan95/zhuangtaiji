@@ -24,11 +24,11 @@ import traceback
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_KERNEL_DIR = _PROJECT_ROOT / "core" / "kernel"
+_KERNEL_DIR = _PROJECT_ROOT / "zhuangtaiji" / "core" / "kernel"
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from core.kernel import (  # noqa: E402
+from zhuangtaiji.core.kernel import (  # noqa: E402
     ACTIVE, DISPOSED, FAILED, PENDING,
     Context, Disposable, DisposableList, EventBus, Loader, Plugin,
     apply_patches, build_index, compose,
@@ -618,7 +618,7 @@ def test_bootstrap_consistency():
     try:
         import json
 
-        from core import create_state_machine, register_action, register_guard
+        from zhuangtaiji.core import create_state_machine, register_action, register_guard
     except Exception as exc:                       # 项目引擎不可用时优雅跳过
         print(f"  [skip] 无法导入项目 FSM 引擎：{exc!r}")
         return
@@ -778,8 +778,8 @@ def test_registry_migration():
     """
     print("\n[10] 注册表收编（P1-1）：可撤销 / fail-loud / fail-closed")
 
-    from core import create_state_machine, register_action, register_guard
-    from core.registries import ACTION_REGISTRY, GUARD_REGISTRY
+    from zhuangtaiji.core import create_state_machine, register_action, register_guard
+    from zhuangtaiji.core.registries import ACTION_REGISTRY, GUARD_REGISTRY
 
     def scn_revocable():
         holder = {}
@@ -826,7 +826,7 @@ def test_registry_migration():
 
     def scn_fail_closed_in_hsm():
         """HSM 走独立的守卫解析路径，同样必须 fail-closed。"""
-        from core import HierarchicalStateMachine
+        from zhuangtaiji.core import HierarchicalStateMachine
         cfg = {"state_machines": {"h": {
             "type": "hierarchical", "initial": "top",
             "states": {"top": {"initial": "inner", "substates": {
@@ -916,8 +916,8 @@ def test_engine_registry_single_source():
     """
     print("\n[11] 引擎注册表单源（P1-2）")
 
-    from core import build_adapter, load_config, plugin
-    from core.registries import engine_kinds, engine_of, engine_sections
+    from zhuangtaiji.core import build_adapter, load_config, plugin
+    from zhuangtaiji.core.registries import engine_kinds, engine_of, engine_sections
 
     plugin.ensure_discovered()
 
@@ -1001,7 +1001,7 @@ def test_engine_registry_single_source():
 
     def scn_revocable_engine_kind():
         """注册可撤销：撤销后该范式从所有入口消失。"""
-        from core.registries import register_engine
+        from zhuangtaiji.core.registries import register_engine
 
         class _Dummy:
             def __init__(self, name="", on_event=None):
@@ -1020,7 +1020,7 @@ def test_engine_registry_single_source():
 
     def scn_analysis_capability_declared():
         """分析能力声明在 analysis 模块里（唯一归属），且对不支持的范式 fail-loud。"""
-        from core import analysis
+        from zhuangtaiji.core import analysis
         assert analysis.SUPPORTED_KINDS, "应声明支持的范式"
         for kind in analysis.SUPPORTED_KINDS:
             assert engine_of(kind) is not None, f"{kind} 未注册为引擎范式"
@@ -1035,7 +1035,7 @@ def test_engine_registry_single_source():
     def scn_web_catalog_derived():
         """Web 端目录从注册表派生（含插件范式）。"""
         try:
-            import web.server as ws
+            import zhuangtaiji.web.server as ws
         except Exception as exc:                   # 前端依赖缺失时跳过
             print(f"  [skip] 无法导入 web.server: {exc!r}")
             return
@@ -1058,8 +1058,8 @@ def test_event_bus_migration():
     """
     print("\n[12] 事件总线与编排器（P1-3 / P2）")
 
-    from core import load_config
-    from core.orchestrator import Orchestrator
+    from zhuangtaiji.core import load_config
+    from zhuangtaiji.core.orchestrator import Orchestrator
 
     cfg = load_config()
     spec = cfg["orchestration"]["demo"]
@@ -1180,7 +1180,7 @@ def test_load_time_validation():
     """
     print("\n[13] load 期配置校验（P4）")
 
-    from core import create_state_machine, load_config
+    from zhuangtaiji.core import create_state_machine, load_config
 
     def scn_real_config_valid():
         """真实 config.json 的所有状态机都应通过校验（无假阳性）。"""

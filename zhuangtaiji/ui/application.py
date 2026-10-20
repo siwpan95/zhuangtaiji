@@ -17,22 +17,22 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
 
-from core import (
+from ..core import (
     GenericStateMachine, create_state_machine, load_config,
     build_behavior_tree, Blackboard,
     build_decision_tree,
     FiniteDifference, StateDiff, ReactiveTracker,
     build_petri_net, build_markov_chain, build_rule_engine,
 )
-from engine import CanvasProgressBar, THEME_DARK, ease_out_cubic
+from ..engine import CanvasProgressBar, THEME_DARK, ease_out_cubic
 
 # ---- P0~P3 新增 Tab ----
-from core.plugin import PluginRegistry, ensure_discovered
-from core.registries import engine_sections
-from ui.visualization_tab import VisualizationTab
-from ui.analysis_tab import AnalysisTab
-from ui.orchestrator_tab import OrchestratorTab
-from ui.plugin_tab import PluginTab
+from ..core.plugin import PluginRegistry, ensure_discovered
+from ..core.registries import engine_sections
+from .visualization_tab import VisualizationTab
+from .analysis_tab import AnalysisTab
+from .orchestrator_tab import OrchestratorTab
+from .plugin_tab import PluginTab
 
 def _sec(kind: str) -> str:
     """取范式在 config.json 中的段名（唯一归属：引擎注册表）。

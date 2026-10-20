@@ -16,9 +16,9 @@ React + @xyflow/react 节点编辑器）的 REST 后端。
   - POST   /api/orchestration/<name>/step  单步驱动某引擎（触发绑定链）
   - POST   /api/orchestration/<name>/reset 重置所有引擎状态
   - GET    /api/orchestration/<name>/status 各引擎实时摘要
-* 托管构建产物：优先 ``web/webui/dist``，缺失时回退 ``web/static``。
+* 托管构建产物：优先 ``zhuangtaiji/web/webui/dist``，缺失时回退 ``zhuangtaiji/web/static``。
 
-运行：  python web/server.py [port] [--host <addr>]
+运行：  python -m zhuangtaiji.web.server [port] [--host <addr>]
         默认只绑定 **127.0.0.1**（仅本机可访问）——本服务无鉴权且 CORS 放开，
         对局域网/公网开放等于把编排的读写删接口交给任何人。
         确需局域网访问时显式打开：--host 0.0.0.0（或用环境变量 ZHUANGTAIJI_HOST），
@@ -32,14 +32,15 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
+#: ``zhuangtaiji/`` 包目录——config.json、前端产物与用户编排都挂在它下面。
+#: 用 ``__file__`` 推导而非 cwd，因此无论从仓库根目录还是从 site-packages 里
+#: 以 ``python -m zhuangtaiji.web.server`` 启动，都能定位到随包分发的资源。
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
 
-from core import load_config, build_adapter, analysis, renderers  # noqa: E402
-from core import plugin as _plugin  # noqa: E402
-from core.registries import engine_of, engine_sections  # noqa: E402
-from core.orchestrator import Orchestrator  # noqa: E402
+from ..core import load_config, build_adapter, analysis, renderers
+from ..core import plugin as _plugin
+from ..core.registries import engine_of, engine_sections
+from ..core.orchestrator import Orchestrator
 
 DIST = os.path.join(ROOT, "web", "webui", "dist")
 STATIC = os.path.join(ROOT, "web", "static")

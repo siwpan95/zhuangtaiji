@@ -12,8 +12,8 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 
-from core import renderers
-from core.plugin import EnginePlugin
+from ..core import renderers
+from ..core.plugin import EnginePlugin
 
 
 def _log(text_widget, msg):

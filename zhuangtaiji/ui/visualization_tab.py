@@ -12,9 +12,9 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 
-from core import load_config, build_adapter, renderers, plugin
-from core.adapters_io import graph_to_mermaid, graph_to_dot
-from core.registries import engine_kinds
+from ..core import load_config, build_adapter, renderers, plugin
+from ..core.adapters_io import graph_to_mermaid, graph_to_dot
+from ..core.registries import engine_kinds
 
 # 完全从引擎注册表派生：新增一个范式（含 core/plugins/ 下自动发现的插件）
 # 会自动出现在本 Tab 的下拉框里，无需改这里的代码。

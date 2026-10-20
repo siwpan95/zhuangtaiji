@@ -8,14 +8,20 @@ __pycache__/
 test/_out.txt
 
 # ---- 用户持久化编排（自动生成，按需保留可删除此行）----
-web/orchestrations.json
+# 注意：含斜杠的模式会锚定到本 .gitignore 所在目录，包移入 zhuangtaiji/ 后必须写全路径
+zhuangtaiji/web/orchestrations.json
 
 # ---- Node / 前端 ----
 node_modules/
-web/webui/dist/
+zhuangtaiji/web/webui/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# ---- 打包产物（pyproject.toml 构建 sdist/wheel 用）----
+build/
+dist/
+*.egg-info/
 
 # ---- 编辑/系统 ----
 .vscode/

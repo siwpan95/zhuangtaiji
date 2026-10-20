@@ -4,10 +4,10 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from core import (load_config, build_adapter, renderers, plugin, analysis,
+from zhuangtaiji.core import (load_config, build_adapter, renderers, plugin, analysis,
                   adapters_io)
-from core.orchestrator import build_orchestrator_from_config
-from core.petri_net import build_petri_net
+from zhuangtaiji.core.orchestrator import build_orchestrator_from_config
+from zhuangtaiji.core.petri_net import build_petri_net
 
 
 cfg = load_config()

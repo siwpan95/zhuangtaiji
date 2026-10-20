@@ -15,32 +15,42 @@ engine, decision table, LLM agent — into one configurable system driven by a s
   event dispatch and layered assembly.
 - **Orchestration layer** — event bus (`*` wildcard subscriptions) plus declarative
   bindings (`when event → then action`).
-- **Two front ends** — `main.py` (Tkinter tabs) and `web/server.py` + `web/webui`
-  (React flow editor with drag-to-create nodes, bind, step and run traces).
+- **Two front ends** — `main.py` (Tkinter tabs) and `zhuangtaiji/web/server.py` +
+  `zhuangtaiji/web/webui` (React flow editor with drag-to-create nodes, bind, step and run traces).
+- **Installable** (since v1.1.0) — `pip install zhuangtaiji`, pure standard library, no runtime deps.
 
 ## Requirements
 
 - Python 3.8+ (`tkinter` ships with Windows Python; install `python3-tk` on Linux).
 - Node.js only if you want to build the optional web editor.
 
+## Install
+
+```bash
+pip install zhuangtaiji            # engine core: pure stdlib, zero runtime dependencies
+pip install zhuangtaiji[llm]       # + optional backend for the LLM agent plugin
+```
+
 ## Quick start
 
 ```bash
-python main.py                     # Tkinter workbench
+python main.py                     # Tkinter workbench (from a source checkout)
+python -m zhuangtaiji              # …or, once installed
 
-cd web/webui && npm install && npm run build
-python web/server.py 8011          # then open http://localhost:8011/
+cd zhuangtaiji/web/webui && npm install && npm run build
+python -m zhuangtaiji.web.server 8011   # then open http://localhost:8011/
 ```
 
 `8011` is this project's registered port (`8000` is taken by the radio panel); pass any
-other port explicitly instead: `python web/server.py <port>`.
+other port explicitly instead: `python -m zhuangtaiji.web.server <port>`.
+After `pip install`, the `zhuangtaiji` and `zhuangtaiji-web` console scripts do the same.
 
 > **Secure default (since 2026-09-24)**: the server binds **`127.0.0.1` only** (localhost).
 > It has **no authentication** and replies with `Access-Control-Allow-Origin: *`, so never expose it to
 > a LAN/public network — anyone on the same network could read/write/delete your orchestrations
 > (`PUT/DELETE/POST /api/orchestration/*`). If you really need LAN access, opt in explicitly and take
-> the risk: `python web/server.py 8011 --host 0.0.0.0` (or `ZHUANGTAIJI_HOST=0.0.0.0`), and add a
-> firewall rule or an authenticating reverse proxy.
+> the risk: `python -m zhuangtaiji.web.server 8011 --host 0.0.0.0` (or `ZHUANGTAIJI_HOST=0.0.0.0`),
+> and add a firewall rule or an authenticating reverse proxy.
 
 ## Tests
 
@@ -54,8 +64,17 @@ is missing; it is reported prominently but not counted as a failure.
 
 ## Layout
 
-`core/` engine kernel · `ui/` Tkinter workbench · `web/` REST server + React editor ·
-`test/` test suite · `tools/` test gate, kernel demo and doc builder.
+All Python sources live under the `zhuangtaiji/` namespace package — the plain top-level
+names `core`, `engine` and `web` are **already taken on PyPI**, so publishing them as-is
+would collide. Import path is therefore `zhuangtaiji.core`, `zhuangtaiji.ui`, …:
+
+```python
+from zhuangtaiji import load_config, create_state_machine
+```
+
+`zhuangtaiji/core/` engine kernel · `zhuangtaiji/ui/` Tkinter workbench ·
+`zhuangtaiji/web/` REST server + React editor · `test/` test suite ·
+`tools/` test gate, kernel demo and doc builder.
 
 ## Changelog
 

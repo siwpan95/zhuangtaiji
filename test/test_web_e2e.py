@@ -10,7 +10,7 @@ import urllib.request
 import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 项目根目录（原 D:\allin 已失效）
-import web.server as ws  # noqa: E402
+import zhuangtaiji.web.server as ws  # noqa: E402
 import http.server as h  # noqa: E402
 
 BASE = "http://127.0.0.1:8151"
@@ -49,10 +49,10 @@ def main():
     # 环境未就绪，不是代码缺陷——以 SKIP 退出码（77）退出，由 tools/run_tests.py
     # 归类为 ENV-SKIP，避免把"没跑 npm run build"误报成"代码坏了"。
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dist_index = os.path.join(root, "web", "webui", "dist", "index.html")
+    dist_index = os.path.join(root, "zhuangtaiji", "web", "webui", "dist", "index.html")
     if not os.path.isfile(dist_index):
-        print("SKIP: 缺少前端构建产物 web/webui/dist/index.html")
-        print("      请先执行： cd web/webui && npm install && npm run build")
+        print("SKIP: 缺少前端构建产物 zhuangtaiji/web/webui/dist/index.html")
+        print("      请先执行： cd zhuangtaiji/web/webui && npm install && npm run build")
         sys.exit(77)
 
     httpd = h.ThreadingHTTPServer(("127.0.0.1", 8151), ws.Handler)

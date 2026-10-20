@@ -87,8 +87,8 @@ def main() -> int:
     root.withdraw()                          # 不弹窗
 
     try:
-        from core import analysis, load_config, plugin
-        from core.registries import engine_kinds, engine_sections
+        from zhuangtaiji.core import analysis, load_config, plugin
+        from zhuangtaiji.core.registries import engine_kinds, engine_sections
 
         plugin.ensure_discovered()
         metas = engine_kinds()
@@ -101,7 +101,7 @@ def main() -> int:
 
         def scn_build_app():
             nonlocal app
-            from ui import Application
+            from zhuangtaiji.ui import Application
             app = Application(root)
             assert app is not None
         check("Application 整体装配成功（9 个 Tab 全构建）", scn_build_app)
@@ -111,7 +111,7 @@ def main() -> int:
             return 1
 
         def scn_builtin_tabs_present():
-            from ui.application import _BUILTIN_TABS
+            from zhuangtaiji.ui.application import _BUILTIN_TABS
             eq(sorted(app.tabs.keys()), sorted(k for k, _a, _c, _t in _BUILTIN_TABS),
                "self.tabs 覆盖全部内置范式")
             for kind, alias, _cls, title in _BUILTIN_TABS:
@@ -129,7 +129,8 @@ def main() -> int:
         def scn_plugin_tabs_auto():
             """自动发现的插件范式应当各有一个 Tab。"""
             builtin = {k for k, _a, _c, _t in __import__(
-                "ui.application", fromlist=["_BUILTIN_TABS"])._BUILTIN_TABS}
+                "zhuangtaiji.ui.application",
+                fromlist=["_BUILTIN_TABS"])._BUILTIN_TABS}
             expected = [m.kind for m in metas
                         if m.kind not in builtin
                         and plugin.PluginRegistry.get(m.kind).specs()]
@@ -143,13 +144,13 @@ def main() -> int:
         print("\n[2] 段名解析（单一归属）")
 
         def scn_sec_resolves():
-            from ui.application import _sec
+            from zhuangtaiji.ui.application import _sec
             for meta in metas:
                 eq(_sec(meta.kind), meta.section, f"{meta.kind} 的段名")
         check("_sec() 对全部范式返回注册表段名", scn_sec_resolves)
 
         def scn_sec_fails_loud():
-            from ui.application import _sec
+            from zhuangtaiji.ui.application import _sec
             try:
                 _sec("no_such_kind")
             except KeyError as exc:
@@ -162,7 +163,7 @@ def main() -> int:
         print("\n[3] Tab 内派生列表")
 
         def scn_analysis_kinds():
-            from ui import analysis_tab
+            from zhuangtaiji.ui import analysis_tab
             got = [k[0] for k in analysis_tab._KINDS]
             eq(got, list(analysis.SUPPORTED_KINDS),
                "分析 Tab 的范式应与 analysis.SUPPORTED_KINDS 一致")
@@ -174,7 +175,7 @@ def main() -> int:
         check("分析 Tab 的范式/段名均由注册表派生", scn_analysis_kinds)
 
         def scn_visualization_kinds():
-            from ui import visualization_tab
+            from zhuangtaiji.ui import visualization_tab
             got = [k[0] for k in visualization_tab._KINDS]
             eq(sorted(got), sorted(m.kind for m in metas),
                "可视化 Tab 应覆盖全部已注册范式（含插件）")
@@ -184,7 +185,7 @@ def main() -> int:
 
         def scn_plugin_paradigm_visible_in_ui():
             """改造的具体收益：插件范式过去不在可视化 Tab 里。"""
-            from ui import visualization_tab
+            from zhuangtaiji.ui import visualization_tab
             kinds = {k[0] for k in visualization_tab._KINDS}
             assert "decision_table" in kinds, "决策表插件应可见"
             assert "llm_agent" in kinds, "LLM Agent 插件应可见"
@@ -242,8 +243,8 @@ def main() -> int:
 
         def scn_registry_change_visible():
             """新注册一个范式后，可视化 Tab 的派生列表应能看到它。"""
-            from core.registries import register_engine
-            from ui import visualization_tab
+            from zhuangtaiji.core.registries import register_engine
+            from zhuangtaiji.ui import visualization_tab
 
             class _Dummy:
                 def __init__(self, name="", on_event=None):

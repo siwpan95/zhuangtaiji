@@ -4,14 +4,14 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from core import (
+from zhuangtaiji.core import (
     GenericStateMachine, create_state_machine, load_config, register_guard,
     register_action,
     HierarchicalStateMachine, BehaviorTree, Blackboard, build_behavior_tree,
     DecisionTree, build_decision_tree, FiniteDifference, StateDiff,
     ReactiveTracker, build_petri_net, build_markov_chain, build_rule_engine,
 )
-from engine.progress_bar import ease_out_quad, ease_in_out_quad, ease_out_cubic
+from zhuangtaiji.engine.progress_bar import ease_out_quad, ease_in_out_quad, ease_out_cubic
 
 
 config = load_config()

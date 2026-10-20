@@ -10,8 +10,8 @@ import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
 
-from core import load_config, analysis
-from core.registries import engine_of, engine_sections
+from ..core import load_config, analysis
+from ..core.registries import engine_of, engine_sections
 
 # 从引擎注册表派生，并**按 analysis.SUPPORTED_KINDS 的顺序**排列——保留原有的
 # 下拉框顺序（Petri 网 → 状态机 → 马尔可夫链 → 决策树），用户观感不变；

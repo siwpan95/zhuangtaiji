@@ -19,7 +19,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from core import config as cfg_mod
+from zhuangtaiji.core import config as cfg_mod
 
 _PASS = 0
 _FAIL = 0

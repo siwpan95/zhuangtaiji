@@ -3,7 +3,7 @@
 # ==========================================
 import tkinter as tk
 
-from ui import Application
+from zhuangtaiji.ui import Application
 
 if __name__ == "__main__":
     root = tk.Tk()

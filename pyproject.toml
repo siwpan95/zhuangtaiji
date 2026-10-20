@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zhuangtaiji"
+version = "1.1.0"
+description = "多范式决策引擎：状态机 / 行为树 / 决策树 / 差分机 / Petri 网 / 马尔可夫链 / 规则引擎，纯标准库实现"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "siwpan" }]
+keywords = [
+    "state-machine", "behavior-tree", "decision-tree", "petri-net",
+    "markov-chain", "rule-engine", "difference-engine", "orchestration",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+# 引擎内核是纯标准库实现，运行期零依赖；openai 只在 LLM 智能体插件配置
+# LLM_API_KEY 时才被惰性导入，因此列为可选依赖。
+dependencies = []
+
+[project.optional-dependencies]
+llm = ["openai>=1.0"]
+
+[project.scripts]
+zhuangtaiji = "zhuangtaiji.__main__:main"
+zhuangtaiji-web = "zhuangtaiji.web.server:main"
+
+[project.urls]
+Homepage = "https://gitee.com/siwpan/zhuangtaiji"
+Source = "https://gitee.com/siwpan/zhuangtaiji"
+Changelog = "https://gitee.com/siwpan/zhuangtaiji/blob/master/CHANGELOG.md"
+
+# ---------------------------------------------------------------------------
+# 打包范围
+#
+# 顶层包名 core / engine / web 在 PyPI 上均已被占用，因此本项目的源码统一挂在
+# zhuangtaiji/ 命名空间下发布。webui 是 Node 前端工程（含 node_modules），
+# 不是 Python 包，显式排除，避免把上千个前端依赖文件拖进构建。
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["zhuangtaiji*"]
+exclude = ["zhuangtaiji.web.webui*"]
+# 只收"带 __init__.py 的真包"。若开启命名空间扫描（默认开），setuptools 会把
+# webui/dist/assets 这类纯前端目录也当成 Python 包塞进 wheel。
+namespaces = false
+
+[tool.setuptools.package-data]
+# "*" 已覆盖 zhuangtaiji/config.json 与 core/kernel/fiber_model.json 等 *.json
+"*" = ["*.json"]
+"zhuangtaiji.web" = ["static/*", "webui/dist/*", "webui/dist/**/*"]
+
+# orchestrations.json 是用户自己保存的编排数据（测试也会往里写），
+# 随包分发等于把本机数据塞进 wheel——显式排除。
+[tool.setuptools.exclude-package-data]
+"*" = ["orchestrations.json"]

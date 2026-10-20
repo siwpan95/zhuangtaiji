@@ -43,7 +43,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEST_DIR = PROJECT_ROOT / "test"
 
 # 本项目自己的顶层包：缺这些说明是接线错误，不是环境问题
-PROJECT_PACKAGES = {"core", "engine", "ui", "web", "tools", "test"}
+PROJECT_PACKAGES = {"zhuangtaiji", "core", "engine", "ui", "web", "tools", "test"}
 
 _MISSING_MODULE = re.compile(r"ModuleNotFoundError: No module named '([^']+)'")
 

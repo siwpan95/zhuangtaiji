@@ -1,0 +1,23 @@
+include LICENSE
+include README.md
+include README.en.md
+include CHANGELOG.md
+include pyproject.toml
+
+# ---- 随包分发的资源（必须精确到文件：宽泛的 *.json 通配会把测试产生的
+#      web/orchestrations.json 与前端 package.json / package-lock.json 一起卷进来）----
+include zhuangtaiji/config.json
+include zhuangtaiji/core/kernel/fiber_model.json
+recursive-include zhuangtaiji/web/static *
+recursive-include zhuangtaiji/web/webui/dist *
+
+# ---- 测试与工具随 sdist 分发（不是 Python 包，package-data 带不到）----
+recursive-include test *.py
+recursive-include tools *.py
+include main.py
+
+# ---- 前端依赖与本地环境绝不进分发包 ----
+prune zhuangtaiji/web/webui/node_modules
+prune .venv
+prune dist
+prune build
