@@ -8,6 +8,19 @@ engine, decision table, LLM agent — into one configurable system driven by a s
 > `README.md` (Chinese) is the authoritative document for this repository.
 > This file is a short English entry point and intentionally does not duplicate it.
 
+[![PyPI](https://img.shields.io/pypi/v/zhuangtaiji)](https://pypi.org/project/zhuangtaiji/)
+[![Python](https://img.shields.io/pypi/pyversions/zhuangtaiji)](https://pypi.org/project/zhuangtaiji/)
+[![License](https://img.shields.io/pypi/l/zhuangtaiji)](https://pypi.org/project/zhuangtaiji/)
+
+**PyPI**: <https://pypi.org/project/zhuangtaiji/> | distribution name and import name are both
+`zhuangtaiji`:
+
+```bash
+pip install zhuangtaiji
+python -c "import zhuangtaiji; print(zhuangtaiji.__version__)"
+python -m zhuangtaiji            # Tkinter workbench
+```
+
 ## Features
 
 - **Pure standard library** engine — no third-party runtime dependencies.

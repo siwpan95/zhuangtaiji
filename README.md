@@ -1,5 +1,12 @@
 # 多范式决策引擎 · 可视化工作台
 
+[![PyPI](https://img.shields.io/pypi/v/zhuangtaiji)](https://pypi.org/project/zhuangtaiji/)
+[![Python](https://img.shields.io/pypi/pyversions/zhuangtaiji)](https://pypi.org/project/zhuangtaiji/)
+[![License](https://img.shields.io/pypi/l/zhuangtaiji)](https://pypi.org/project/zhuangtaiji/)
+
+**PyPI**：<https://pypi.org/project/zhuangtaiji/> ｜ **发行名与导入名都是 `zhuangtaiji`**
+（v1.1.0 起源码统一挂在 `zhuangtaiji` 命名空间下发布 —— 见下方「目录结构」的说明）。
+
 一个把多种计算/决策范式连成「可编排系统」的 Python 引擎，提供 **Tkinter 桌面工作台**
 与 **React + react-flow Web 编排编辑器** 两种前端界面。所有范式由同一份 `config.json`
 驱动，并通过编排层（事件总线 + 声明式绑定）协同工作。
