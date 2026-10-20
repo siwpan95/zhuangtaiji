@@ -6,8 +6,63 @@
 
 | 版本 | 日期 | 绑定提交 | 摘要 |
 |---|---|---|---|
+| [v1.1.0](#v110--2026-10-20) | 2026-10-20 | `46b260e` | 源码重组为 `zhuangtaiji` 命名空间包，具备 PyPI 分发能力 |
 | [v1.0.1](#v101--2026-09-24) | 2026-09-24 | `429710a` | Web 编排服务默认只绑定回环地址（安全修复） |
 | [v1.0.0](#v100--2026-09-24) | 2026-09-24 | `10357b6` | Cordis 风格内核重构完成（P0–P4） |
+
+---
+
+## [v1.1.0] — 2026-10-20
+
+> 把「一个能跑的仓库」变成「一个能 `pip install` 的包」。
+> tag `v1.1.0` → 提交 `46b260e`
+
+### 破坏性变更：导入路径
+
+- 源码整体移入 `zhuangtaiji/` 命名空间包：
+  `core` / `engine` / `ui` / `web` → `zhuangtaiji.core` / `zhuangtaiji.engine` /
+  `zhuangtaiji.ui` / `zhuangtaiji.web`
+- **为什么必须改**：顶层包名 `core`、`engine`、`web` 在 PyPI 上**均已被其它项目占用**
+  （实测 HTTP 200，只有 `ui` 空闲），按原目录结构发版必然撞车
+- `config.json` 随之移入 `zhuangtaiji/` 并**随包分发**；`load_config()` 仍按 `__file__`
+  推导路径，源码态与安装态都能定位
+
+### 新增
+
+- 顶层导出：`from zhuangtaiji import load_config, create_state_machine`（`core` 的全部公开 API）
+- `python -m zhuangtaiji` → Tkinter 工作台；安装后另有 `zhuangtaiji` 与 `zhuangtaiji-web` 两个命令
+- 打包配置 `pyproject.toml`（PEP 621）+ `MANIFEST.in`：MIT、`requires-python >=3.8`、
+  **零运行时依赖**；`[llm]` extras 装 openai（LLM 智能体插件的可选后端，惰性导入）
+
+### 顺手修掉的真实缺陷
+
+- `core/plugin.py` 插件发现**硬编码** `"core.plugins"`，且用
+  `except ModuleNotFoundError: return []` 吞掉失败 → 改名后 `decision_table` 与
+  `llm_agent` **静默消失且无任何报错**。改为 `f"{__package__}.plugins"` 由包自身推导
+- `web/` 原先没有 `__init__.py`，靠隐式命名空间包生效 → 打成 wheel 会漏掉整个 `web` 包
+
+### 质量门禁（发布前实机复核）
+
+- 统一门禁 `tools/run_tests.py`：**通过 6 / 失败 0 / 环境跳过 0**
+  （内核 80 项断言 · UI 烟测 14 项 · Web E2E 8 项）
+- 安装态复验（干净 venv，**在源码目录之外**运行，`__file__` 指向 site-packages 为证）：
+  `import` / `load_config` / 状态机 `idle→finished` / 插件发现 9 范式 /
+  Web 服务含前端 `dist` 资源 全部可用
+- `python -m build` 产出 sdist + wheel；`twine check` 双 PASSED；`top_level.txt` 仅 `zhuangtaiji`
+
+### 升级提示
+
+```python
+# v1.0.x
+from core import load_config, create_state_machine
+
+# v1.1.0 起（两种写法等价）
+from zhuangtaiji import load_config, create_state_machine
+from zhuangtaiji.core import load_config, create_state_machine
+```
+
+Web 服务启动方式同步改为 `python -m zhuangtaiji.web.server 8011`
+（原 `python web/server.py 8011`）。
 
 ---
 
