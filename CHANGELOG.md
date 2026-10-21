@@ -6,9 +6,26 @@
 
 | 版本 | 日期 | 绑定提交 | 摘要 |
 |---|---|---|---|
+| [v1.1.1](#v111--2026-10-21) | 2026-10-21 | `20cd597` | fail-loud 缺口修复：空配置/未知状态/隔离入参改装配期友好报错 |
 | [v1.1.0](#v110--2026-10-20) | 2026-10-20 | `46b260e` | 源码重组为 `zhuangtaiji` 命名空间包，具备 PyPI 分发能力 |
 | [v1.0.1](#v101--2026-09-24) | 2026-09-24 | `429710a` | Web 编排服务默认只绑定回环地址（安全修复） |
 | [v1.0.0](#v100--2026-09-24) | 2026-09-24 | `10357b6` | Cordis 风格内核重构完成（P0–P4） |
+
+---
+
+## [v1.1.1] — 2026-10-21
+
+> 专项压测暴露的 3 处 fail-loud 缺口修复。tag `v1.1.1` → 提交 `20cd597`
+
+### Fixed
+
+- **状态机空配置（GenericStateMachine / HierarchicalStateMachine / create_state_machine）**：
+  `full_config` 缺少 `state_machines` 段时泄漏裸 `KeyError: 'state_machines'`；改为装配期
+  `ValueError: 配置缺少 "state_machines" 段`，与库内其它"缺段"报错风格一致。
+- **MarkovChain.is_absorbing**：对未知状态泄漏裸 `KeyError`；改为
+  `ValueError: 状态 "x" 不在状态空间: [...]`，与构造期校验风格一致。
+- **Context.isolate**：传 list（`isolate(["a","b"])`）触发 `TypeError: unhashable type: 'list'`；
+  归一化入参，`isolate("a","b")` 与 `isolate(["a","b"])` 两种写法均可用。
 
 ---
 
