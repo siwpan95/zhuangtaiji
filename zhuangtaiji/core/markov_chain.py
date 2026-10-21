@@ -100,6 +100,8 @@ class MarkovChain:
         return {self.states[i]: pi[i] for i in range(n)}
 
     def is_absorbing(self, state: str) -> bool:
+        if state not in self.index:
+            raise ValueError(f'状态 "{state}" 不在状态空间: {list(self.states)}')
         i = self.index[state]
         return self.matrix[i][i] >= 1.0 - 1e-9
 

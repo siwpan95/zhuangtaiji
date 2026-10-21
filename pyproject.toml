@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zhuangtaiji"
-version = "1.1.0"
+version = "1.1.1"
 description = "多范式决策引擎：状态机 / 行为树 / 决策树 / 差分机 / Petri 网 / 马尔可夫链 / 规则引擎，纯标准库实现"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8"
