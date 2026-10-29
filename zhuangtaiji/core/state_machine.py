@@ -27,6 +27,8 @@ class GenericStateMachine:
             on_action:    可选回调 (action_type, state_id, detail) -> None
                           用于外部监听 entry/exit/transition 等动作
         """
+        if "state_machines" not in full_config:
+            raise ValueError('配置缺少 "state_machines" 段')
         config = full_config["state_machines"].get(machine_name)
         if not config:
             raise ValueError(f"找不到状态机配置: {machine_name}")
@@ -233,6 +235,8 @@ def create_state_machine(machine_name, full_config, on_action=None, guards=None)
       HierarchicalStateMachine；
     * 否则返回通用 GenericStateMachine。
     """
+    if "state_machines" not in full_config:
+        raise ValueError('配置缺少 "state_machines" 段')
     config = full_config["state_machines"].get(machine_name, {})
     is_hier = config.get("type") == "hierarchical" or any(
         "substates" in s for s in config.get("states", {}).values()

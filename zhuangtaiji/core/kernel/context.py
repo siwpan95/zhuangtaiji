@@ -273,6 +273,8 @@ class Context:
         这是「同一进程内两份互不干扰的配置」的实现方式——每个 Orchestrator
         挂在自己的 isolate 作用域里，同名引擎互不可见。
         """
+        if len(names) == 1 and not isinstance(names[0], str):
+            names = tuple(names[0])   # 兼容 isolate(["a","b"]) / isolate(("a","b"))
         return self.extend(name=f"{self._name}/isolate", isolated=names)
 
     # ------------------------------------------------------------------

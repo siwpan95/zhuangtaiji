@@ -53,6 +53,8 @@ from .registries import ACTION_REGISTRY, GUARD_REGISTRY
 class HierarchicalStateMachine:
     def __init__(self, machine_name: str, full_config: Dict[str, Any],
                  on_action: Optional[Callable] = None):
+        if "state_machines" not in full_config:
+            raise ValueError('配置缺少 "state_machines" 段')
         config = full_config["state_machines"].get(machine_name)
         if not config:
             raise ValueError(f"找不到状态机配置: {machine_name}")
