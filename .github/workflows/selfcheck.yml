@@ -22,8 +22,26 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: 无头自检
-        run: python selfcheck.py
+        run: |
+          set -o pipefail
+          python -u selfcheck.py 2>&1 | tee "$RUNNER_TEMP/selfcheck.log"
         env:
           PYTHONIOENCODING: utf-8
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
+      # 失败时把真实报错暴露到 annotation 与 job summary：
+      # job 原始日志需 admin 权限才能经 API 读取，公开可读的只有 annotation。
+      - name: 失败原因
+        if: failure()
+        run: |
+          LOG="$RUNNER_TEMP/selfcheck.log"
+          TAIL=$(tail -6 "$LOG" 2>/dev/null | tr '\n' ' ' | tr -d '\r' | cut -c1-800)
+          echo "::error title=selfcheck 失败::$TAIL"
+          if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+            {
+              echo '### selfcheck 失败输出（末 40 行）'
+              echo '```'
+              tail -40 "$LOG" 2>/dev/null || echo '(无日志)'
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
