@@ -215,8 +215,9 @@ print(sm.current_state_id)
 各版本的改动、门禁实测与升级提示见 [`CHANGELOG.md`](CHANGELOG.md)。每个版本对应一个
 **注解 tag** 与一个 [Gitee Release](https://gitee.com/siwpan/zhuangtaiji/releases)，三者说明同源。
 
+
 ## 许可
 
 - MIT，见 [LICENSE](LICENSE)。
 
-<!-- 补写记账：zhuangtaiji · 本段由 allin 仓 tools/publish_area_license_fields.py 依据本仓 LICENSE 实读补写 -->
+<!-- 补写记账：zhuangtaiji · 本段由 allin 仓 tools/publish_area_license_fields.py 依据本仓 LICENSE 文件实读补写 -->
