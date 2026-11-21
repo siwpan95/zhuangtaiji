@@ -48,7 +48,9 @@ def check_headless_import():
     """Importing the engine must not pull in tkinter (no GUI initialisation)."""
     import zhuangtaiji
 
-    _check(zhuangtaiji.__version__ == "1.1.0",
+    # 2026-11-21 修：原硬编码 1.1.0 与权威来源（tag v1.1.1 / CHANGELOG /
+    # pyproject.toml 三处一致的 1.1.1）漂移 —— 自检自己先红，CI 一接就假失败。
+    _check(zhuangtaiji.__version__ == "1.1.1",
            f"unexpected version {zhuangtaiji.__version__}")
     _check("tkinter" not in sys.modules,
            "importing zhuangtaiji imported tkinter")

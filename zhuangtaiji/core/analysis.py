@@ -290,7 +290,11 @@ def format_analysis(kind: str, spec: Dict[str, Any]) -> str:
             f"可达标记数: {r['reachable_states']}",
             f"有界性: {'有界' if r['is_bounded'] else '无界'} (k≤{r['bounded']})",
             f"死锁状态: {len(r['deadlocks'])} 个 -> {'无（无死锁）' if r['is_deadlock_free'] else '存在!'}",
-            f"变迁活性: {'全部可达' if r['liveness_ok'] else f'死变迁 {r['dead_transitions']}'}",
+            # 2026-11-21 修：原为 f"...{... else f'死变迁 {r['dead_transitions']}'}" ——
+            # f-string 内嵌**同引号** f-string 属 Python 3.12+（PEP 701）语法，
+            # 而本仓 pyproject 声明 requires-python = ">=3.8"，3.8~3.11 上是 SyntaxError。
+            # 改为字符串拼接，无嵌套 f-string，低版本兼容。
+            f"变迁活性: {'全部可达' if r['liveness_ok'] else '死变迁 ' + str(r['dead_transitions'])}",
             f"各库所上限令牌: {r['bounded_per_place']}",
         ]
         return "\n".join(lines)
